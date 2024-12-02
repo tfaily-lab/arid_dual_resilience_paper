@@ -1,3 +1,16 @@
+# Custom
+*.ai
+output_figures/incomplete*.svg
+data/dram_annotations/*
+data/metaT/*
+data/singlem_output/reads_otu_table.tsv
+data/dada2_output/AVS_matrix_final_2024.csv
+data/preprocessed_data/ASV_matrix_rarefied.csv
+data/mash_distances/*
+data/definitions/expression_per_sample_cnps_10-31_fixed.csv
+data/definitions/expression_per_sample_traits_10-31.csv
+output_tables/Supplementary*
+
 # History files
 .Rhistory
 .Rapp.history

@@ -1,0 +1,174 @@
+sample,sampling,month,stage,Type,Location,dataset
+DNA-1-S1-22_S63,DNA-1-22,May_22,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S1-22_S958,DNA-1-22,May_22,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S1_S67,DNA-1,May,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S1_S962,DNA-1,May,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S2-22_S64,DNA-1-22,May_22,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S2-22_S959,DNA-1-22,May_22,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S2_S68,DNA-1,May,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S2_S963,DNA-1,May,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S3-22_S65,DNA-1-22,May_22,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S3-22_S960,DNA-1-22,May_22,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S3_S69,DNA-1,May,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S3_S964,DNA-1,May,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S4-22_S66,DNA-1-22,May_22,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S4-22_S961,DNA-1-22,May_22,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S4_S70,DNA-1,May,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-1-S4_S965,DNA-1,May,Pre monsoon,arid soil,Sonoran Desert (us),1
+DNA-3-S1_S71,DNA-3,July_1,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-3-S1_S966,DNA-3,July_1,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-3-S2_S72,DNA-3,July_1,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-3-S2_S967,DNA-3,July_1,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-3-S3_S73,DNA-3,July_1,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-3-S3_S968,DNA-3,July_1,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-3-S4_S74,DNA-3,July_1,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-3-S4_S969,DNA-3,July_1,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-4-S1_S75,DNA-4,July_2,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-4-S1_S970,DNA-4,July_2,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-4-S2_S76,DNA-4,July_2,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-4-S2_S971,DNA-4,July_2,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-4-S3_S77,DNA-4,July_2,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-4-S3_S972,DNA-4,July_2,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-4-S4_S78,DNA-4,July_2,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-4-S4_S973,DNA-4,July_2,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-5-S1_S79,DNA-5,July_3,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-5-S1_S974,DNA-5,July_3,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-5-S2_S80,DNA-5,July_3,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-5-S2_S975,DNA-5,July_3,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-5-S3_S81,DNA-5,July_3,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-5-S3_S976,DNA-5,July_3,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-5-S4_S82,DNA-5,July_3,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-5-S4_S977,DNA-5,July_3,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-6-S1_S83,DNA-6,August,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-6-S1_S978,DNA-6,August,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-6-S2_S84,DNA-6,August,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-6-S2_S979,DNA-6,August,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-6-S3_S85,DNA-6,August,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-6-S3_S980,DNA-6,August,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-6-S4_S86,DNA-6,August,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-6-S4_S981,DNA-6,August,During monsoon,arid soil,Sonoran Desert (us),1
+DNA-8-S1_S87,DNA-8,October,Post monsoon,arid soil,Sonoran Desert (us),1
+DNA-8-S1_S982,DNA-8,October,Post monsoon,arid soil,Sonoran Desert (us),1
+DNA-8-S2_S88,DNA-8,October,Post monsoon,arid soil,Sonoran Desert (us),1
+DNA-8-S2_S983,DNA-8,October,Post monsoon,arid soil,Sonoran Desert (us),1
+DNA-8-S3_S89,DNA-8,October,Post monsoon,arid soil,Sonoran Desert (us),1
+DNA-8-S3_S984,DNA-8,October,Post monsoon,arid soil,Sonoran Desert (us),1
+DNA-8-S4_S90,DNA-8,October,Post monsoon,arid soil,Sonoran Desert (us),1
+DNA-8-S4_S985,DNA-8,October,Post monsoon,arid soil,Sonoran Desert (us),1
+ERR3870344.fastq.gz,ERR3870344.fastq.gz,NA,During monsoon,biocrust,Negev Desert,2
+ERR3870354.fastq.gz,ERR3870354.fastq.gz,NA,During monsoon,biocrust,Negev Desert,2
+ERR3870372.fastq.gz,ERR3870372.fastq.gz,NA,During monsoon,biocrust,Negev Desert,2
+ERR3870394.fastq.gz,ERR3870394.fastq.gz,NA,During monsoon,biocrust,Negev Desert,2
+ERR3885239.fastq.gz,ERR3885239.fastq.gz,NA,During monsoon,biocrust,Negev Desert,2
+SRR18218230.fastq.gz,SRR18218230.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218231.fastq.gz,SRR18218231.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218232.fastq.gz,SRR18218232.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218233.fastq.gz,SRR18218233.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218234.fastq.gz,SRR18218234.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218235.fastq.gz,SRR18218235.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218236.fastq.gz,SRR18218236.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218237.fastq.gz,SRR18218237.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218238.fastq.gz,SRR18218238.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218239.fastq.gz,SRR18218239.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218240.fastq.gz,SRR18218240.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218241.fastq.gz,SRR18218241.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218242.fastq.gz,SRR18218242.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR18218243.fastq.gz,SRR18218243.fastq.gz,NA,During monsoon,Desert farm,Sinai desert,3
+SRR23018243.fastq.gz,SRR23018243.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018244.fastq.gz,SRR23018244.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018245.fastq.gz,SRR23018245.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018246.fastq.gz,SRR23018246.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018247.fastq.gz,SRR23018247.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018248.fastq.gz,SRR23018248.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018249.fastq.gz,SRR23018249.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018250.fastq.gz,SRR23018250.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018251.fastq.gz,SRR23018251.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018252.fastq.gz,SRR23018252.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018253.fastq.gz,SRR23018253.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018254.fastq.gz,SRR23018254.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018255.fastq.gz,SRR23018255.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018256.fastq.gz,SRR23018256.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018257.fastq.gz,SRR23018257.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018258.fastq.gz,SRR23018258.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018259.fastq.gz,SRR23018259.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018260.fastq.gz,SRR23018260.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018261.fastq.gz,SRR23018261.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018262.fastq.gz,SRR23018262.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018263.fastq.gz,SRR23018263.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018264.fastq.gz,SRR23018264.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018265.fastq.gz,SRR23018265.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018266.fastq.gz,SRR23018266.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018267.fastq.gz,SRR23018267.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018268.fastq.gz,SRR23018268.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018269.fastq.gz,SRR23018269.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018270.fastq.gz,SRR23018270.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018271.fastq.gz,SRR23018271.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018272.fastq.gz,SRR23018272.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018273.fastq.gz,SRR23018273.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR23018274.fastq.gz,SRR23018274.fastq.gz,NA,During monsoon,Arid grassland,Xilingol League,4
+SRR13837100.fastq.gz,SRR13837100.fastq.gz,,,,Sonoran Desert,5
+SRR13837101.fastq.gz,SRR13837101.fastq.gz,,,,Sonoran Desert,5
+SRR13837102.fastq.gz,SRR13837102.fastq.gz,,,,Sonoran Desert,5
+SRR13837103.fastq.gz,SRR13837103.fastq.gz,,,,Sonoran Desert,5
+SRR13837104.fastq.gz,SRR13837104.fastq.gz,,,,Sonoran Desert,5
+SRR13837105.fastq.gz,SRR13837105.fastq.gz,,,,Sonoran Desert,5
+SRR13837106.fastq.gz,SRR13837106.fastq.gz,,,,Sonoran Desert,5
+SRR13837107.fastq.gz,SRR13837107.fastq.gz,,,,Sonoran Desert,5
+SRR13837108.fastq.gz,SRR13837108.fastq.gz,,,,Sonoran Desert,5
+SRR13837109.fastq.gz,SRR13837109.fastq.gz,,,,Sonoran Desert,5
+SRR13837110.fastq.gz,SRR13837110.fastq.gz,,,,Sonoran Desert,5
+SRR13837111.fastq.gz,SRR13837111.fastq.gz,,,,Sonoran Desert,5
+SRR13837112.fastq.gz,SRR13837112.fastq.gz,,,,Sonoran Desert,5
+SRR13837113.fastq.gz,SRR13837113.fastq.gz,,,,Sonoran Desert,5
+SRR13837114.fastq.gz,SRR13837114.fastq.gz,,,,Sonoran Desert,5
+SRR13837115.fastq.gz,SRR13837115.fastq.gz,,,,Sonoran Desert,5
+SRR13837116.fastq.gz,SRR13837116.fastq.gz,,,,Sonoran Desert,5
+SRR13837117.fastq.gz,SRR13837117.fastq.gz,,,,Sonoran Desert,5
+SRR13837118.fastq.gz,SRR13837118.fastq.gz,,,,Sonoran Desert,5
+SRR13837119.fastq.gz,SRR13837119.fastq.gz,,,,Sonoran Desert,5
+SRR13837120.fastq.gz,SRR13837120.fastq.gz,,,,Sonoran Desert,5
+SRR13837121.fastq.gz,SRR13837121.fastq.gz,,,,Sonoran Desert,5
+SRR13837122.fastq.gz,SRR13837122.fastq.gz,,,,Sonoran Desert,5
+SRR13837123.fastq.gz,SRR13837123.fastq.gz,,,,Sonoran Desert,5
+SRR12473530.fastq.gz,SRR12473530.fastq.gz,,,,Negev Desert,6
+SRR12473531.fastq.gz,SRR12473531.fastq.gz,,,,Negev Desert,6
+SRR12473532.fastq.gz,SRR12473532.fastq.gz,,,,Negev Desert,6
+SRR12473533.fastq.gz,SRR12473533.fastq.gz,,,,Negev Desert,6
+SRR12473534.fastq.gz,SRR12473534.fastq.gz,,,,Negev Desert,6
+SRR12473535.fastq.gz,SRR12473535.fastq.gz,,,,Negev Desert,6
+SRR12473536.fastq.gz,SRR12473536.fastq.gz,,,,Negev Desert,6
+SRR12473537.fastq.gz,SRR12473537.fastq.gz,,,,Negev Desert,6
+SRR12473538.fastq.gz,SRR12473538.fastq.gz,,,,Negev Desert,6
+SRR12473539.fastq.gz,SRR12473539.fastq.gz,,,,Negev Desert,6
+SRR12473540.fastq.gz,SRR12473540.fastq.gz,,,,Negev Desert,6
+SRR12473541.fastq.gz,SRR12473541.fastq.gz,,,,Negev Desert,6
+SRR11829740.fastq.gz,SRR11829740.fastq.gz,,,,Mojave Desert,7
+SRR11830170.fastq.gz,SRR11830170.fastq.gz,,,,Mojave Desert,7
+SRR11829738.fastq.gz,SRR11829738.fastq.gz,,,,Mojave Desert,7
+SRR11829737.fastq.gz,SRR11829737.fastq.gz,,,,Mojave Desert,7
+SRR11829736.fastq.gz,SRR11829736.fastq.gz,,,,Mojave Desert,7
+SRR20363862.fastq.gz,SRR20363862.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363863.fastq.gz,SRR20363863.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363864.fastq.gz,SRR20363864.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363865.fastq.gz,SRR20363865.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363866.fastq.gz,SRR20363866.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363867.fastq.gz,SRR20363867.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363868.fastq.gz,SRR20363868.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363869.fastq.gz,SRR20363869.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363870.fastq.gz,SRR20363870.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363871.fastq.gz,SRR20363871.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363872.fastq.gz,SRR20363872.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363873.fastq.gz,SRR20363873.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363874.fastq.gz,SRR20363874.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363875.fastq.gz,SRR20363875.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363876.fastq.gz,SRR20363876.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363877.fastq.gz,SRR20363877.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363878.fastq.gz,SRR20363878.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363879.fastq.gz,SRR20363879.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363880.fastq.gz,SRR20363880.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363881.fastq.gz,SRR20363881.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363882.fastq.gz,SRR20363882.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363883.fastq.gz,SRR20363883.fastq.gz,,,,Valle de Guadalupe,9
+SRR20363884.fastq.gz,SRR20363884.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363885.fastq.gz,SRR20363885.fastq.gz,,,,Cuatro Cienegas,8
+SRR20363886.fastq.gz,SRR20363886.fastq.gz,,,,Cuatro Cienegas,8

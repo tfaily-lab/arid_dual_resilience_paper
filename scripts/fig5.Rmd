@@ -1,0 +1,608 @@
+---
+title: "Analyze_networks"
+author: "Christian Ayala Ortiz"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# 1. Loading libraries
+
+```{r setup}
+library(patchwork)
+library(ggpubr)
+library(igraph)
+library(ggfx)
+library(ggh4x)
+library(ggnetwork)
+library(readxl)
+library(MetaNet)
+library(tidyverse)
+library(ggClusterNet)
+source('scripts/custom_functions.R')
+```
+
+## Load data
+
+```{r}
+colors <- c('Wet' = '#20a39e',
+            'Dry' = '#ffba49')
+
+mag_taxonomy <- load_mag_taxonomy()
+
+bin_code <- read_csv('data/networks/mag_network_names_updated.csv')
+
+phyla_colors <- set_names(get_palette('Paired', 18),
+                          nm =sort(unique(mag_taxonomy$Phylum)))
+
+phyla_colors[3] = 'blue'
+```
+
+
+# 2. Co-ocurrence network
+
+## 2.1 Nodes
+
+```{r}
+nodes_wet <- read_csv('data/networks/nodes_mags_wet.csv') %>% 
+  mutate(net = 'Wet') %>% 
+  inner_join(bin_code, by = c('Name' = 'ID'))
+
+nodes_dry <- read_csv('data/networks/nodes_mags_dry.csv') %>% 
+  mutate(net = 'Dry') %>% 
+  inner_join(bin_code, by = c('Name' = 'ID'))
+
+nodes_all <- rbind(nodes_wet, nodes_dry) 
+```
+
+## 2.2 Edges
+
+```{r}
+edges_wet <- read_csv('data/networks/edges_mags_wet.csv') %>% 
+  mutate(net = 'Wet')
+edges_dry <- read_csv('data/networks/edges_mags_dry.csv') %>% 
+  mutate(net = 'Dry')
+
+edges_all <- rbind(edges_wet, edges_dry) %>% 
+  mutate(interaction = ifelse(interaction == 'pp', 'Positive', 'Negative'))
+```
+
+## 2.3 Networks
+
+```{r}
+mag_phyl <- mag_taxonomy %>% 
+  mutate(Phylum = str_remove(Phylum, 'p__'),
+         Phylum_lump = fct_lump_n(Phylum, n = 10))
+
+nodes_ready <- nodes_all %>% 
+  group_by(`No.module`) %>% 
+  mutate(nodes_per_module = n(),
+         module = paste0('Module ', `No.module`),
+         module = factor(module, levels = paste0('Module ', 0:21)),
+         node_topological_role = case_when(Zi <= 2.5 & Pi <= 0.62 ~ "Peripherals",
+                                           Zi <= 2.5 & Pi > 0.62 ~ "Connectors",
+                                           Zi > 2.5 & Pi <= 0.62 ~ "Module hubs",
+                                           Zi > 2.5 & Pi > 0.62 ~ "Network hubs")) %>% 
+  inner_join(mag_phyl, by = c('Genome' = 'bin')) %>% 
+  ungroup()
+
+i <- 1
+module_colors <- map_chr(levels(nodes_ready$module), function(mod){
+  n <- nodes_ready %>% 
+    filter(module == mod) %>% 
+    pull(nodes_per_module) %>% 
+    unique
+  
+  if(n > 10){
+    col <- get_palette('Dark2', 6)[i]
+    i <<- i +1
+  } else {
+    col = 'transparent'
+  }
+  
+  return(col)
+})
+
+names(module_colors) <- levels(nodes_ready$module)
+
+phyl_colors <- set_names(get_palette('Paired', 11),
+                         nm = sort(unique(nodes_ready$Phylum)))
+
+nodes_split <- nodes_ready %>% 
+  split(.$net)
+
+edges_split <- edges_all %>% 
+  split(.$net)
+
+graph_rmt <- map2(nodes_split, edges_split, function(nod, edg){
+  
+  nod2 <- select(nod, Name, Phylum, node_topological_role, module, node.degree)
+  graph_from_data_frame(edg, directed = FALSE, vertices = nod2)
+})
+
+single_net_df <- imap(graph_rmt, function(x, net_name){
+  ggnetwork(x) %>% 
+    mutate(origin = net_name)
+}) %>% 
+  reduce(rbind)
+
+single_net_plot <- single_net_df %>% 
+  mutate(node_size = node.degree/max(node.degree) * .5) %>% 
+  ggplot(aes(x = x,
+             y = y,
+             xend = xend,
+             yend = yend)) +
+  ggforce::geom_mark_ellipse(aes(group = module,
+                                 fill = module),
+                             color = 'transparent',
+                             show.legend = FALSE,
+                             alpha = .1) +
+  scale_fill_manual(values = module_colors) +
+  with_outer_glow(
+    geom_nodes(data = . %>% filter(node_topological_role == 'Connectors'),
+               aes(x = x,
+                   y = y,
+                   shape = node_topological_role,
+                   size = node_size),
+               show.legend = FALSE),
+    colour = 'red',
+    sigma = 5,
+    expand = 7
+  ) +
+  #labs(title = paste0(name, ' months')) +
+  facet_wrap(~origin) +
+  geom_edges(aes(color = interaction)) +
+  scale_color_manual(values = c('steelblue', 'indianred2')) +
+  scale_size_continuous(range = c(.5, 2)) +
+  ggnewscale::new_scale_fill() +
+  geom_nodes(aes(fill = Phylum,
+                 shape = node_topological_role,
+                 size = node_size),
+  ) +
+  scale_fill_manual(values = phyla_colors) +
+  scale_shape_manual(values = c('Connectors' = 23, 
+                                'Network hubs' = 24, 
+                                'Peripherals' = 21)) +
+  labs(title = 'Co-ocurrence networks') +
+  guides(fill = guide_legend(override.aes = list(shape = 21))) +
+  guides(size = 'none') +
+  theme_blank() +
+  theme(legend.position = 'none',
+        plot.title = element_text(face = 'bold', hjust = 0.5, size = 7),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 6))
+
+single_net_plot
+```
+
+# 2. Metabolic interactions network
+
+## 2.1 All data
+
+```{r}
+global_results <- read_tsv('data/networks/smetana_pairs_res_summarized.tsv', 
+                           col_names = c('community', 'medium', 
+                                         'size', 'mip', 'mro', 'comparison')) %>% 
+  mutate(comparison = str_remove(comparison, '_results.*'),
+         MAG_1 = str_extract(comparison, '.*_[0-9]+(?=_(bco|bcn|DNA))'),
+         MAG_2 = str_extract(comparison, '(?<=[0-9]_)(bco|bcn|DNA).*'),
+         mip = as.numeric(mip),
+         mro = as.numeric(mro))
+
+detailed_results <- read_tsv('data/networks/smetana_pair_detailed_summ.tsv',
+                             col_names = c('community', 'medium', 
+                                           'receiver', 'donor', 'compound',
+                                           'scs', 'mus', 'mps', 'smetana', 'file'))
+
+receiver_counts <- detailed_results %>% 
+  group_by(receiver) %>% 
+  count(name = 'receiver_counts')
+
+donor_counts <- detailed_results %>% 
+  group_by(donor) %>% 
+  count(name = 'donor_counts')
+
+donor_or_receiver <- full_join(receiver_counts, donor_counts, by = c('receiver' = 'donor')) %>% 
+  rename(bin = receiver) %>% 
+  mutate(across(c(receiver_counts, donor_counts), ~ifelse(is.na(.x), 0, .x)),
+         main_role = ifelse(receiver_counts > donor_counts, 'Receiver', 'Donor'),
+         bin = str_remove(bin, '_genes.*'))
+
+global_filtered <- global_results %>% 
+  filter(mip >= 5)
+
+edges <- global_filtered %>% 
+  filter(mip >= 5) %>% 
+  select(from = MAG_1, to = MAG_2, mip)
+
+nodes <- tibble(Name = unique(c(edges$from, edges$to))) %>% 
+  inner_join(mag_taxonomy, by = c('Name' = 'bin')) %>% 
+  inner_join(donor_or_receiver, by = c('Name' = 'bin'))
+```
+
+## 2.2 Filtering for those in the dry and wet networks
+
+```{r}
+nodes_met_dry <- nodes %>% 
+  filter(Name %in% nodes_dry$Genome)
+
+edges_met_dry <- edges %>% 
+  filter((from %in% nodes_met_dry$Name & to %in% nodes_met_dry$Name))
+
+nodes_met_wet <- nodes %>% 
+  filter(Name %in% nodes_wet$Genome)
+
+edges_met_wet <- edges %>% 
+  filter((from %in% nodes_met_wet$Name & to %in% nodes_met_wet$Name))
+```
+
+## 2.3 Create graph objects
+
+```{r}
+dry_met_network <- create_network_zipi(edges_met_dry, nodes_met_dry)
+wet_met_network <- create_network_zipi(edges_met_wet, nodes_met_wet)
+```
+
+## 2.4 Plotting as facets
+
+```{r}
+met_list <- list('Dry' = dry_met_network,
+                 'Wet' = wet_met_network)
+
+roles_df <- tibble(role_name = c("Peripherals", "Network hubs", "Module hubs", "Connectors"),
+                   roles = 1:4)
+
+met_net_df <- imap(met_list, function(graph, net_name){
+  lay <- layout_on_sphere(graph)
+  df <- ggnetwork(graph, layout = lay[,c(1,2)]) %>% 
+    mutate(origin = net_name) %>% 
+    left_join(roles_df) %>% 
+    mutate(role_name = ifelse(is.na(role_name), 'Peripherals', role_name))
+}) %>% reduce(rbind)
+
+
+met_network <- met_net_df %>% 
+  mutate(node_size = Degree/max(Degree) * .5) %>% 
+  ggplot(aes(x = x,
+             y = y,
+             xend = xend,
+             yend = yend)) +
+  geom_edges(data = . %>% filter(connection_with == 'Link with other MAG'),
+             color = 'gray20',
+             linewidth = .03) +
+  geom_edges(data = . %>% filter(connection_with == 'Link with hubs'),
+             color = 'gray20',
+             linewidth = .03) +
+  ggnewscale::new_scale_color() +
+  with_outer_glow(
+    geom_nodes(data = . %>% filter(role_name %in% c('Network hubs')),
+               aes(x = x,
+                   y = y,
+                   size = node_size),
+               shape = 24),
+    colour = 'red2',
+    sigma = 5,
+    expand = 7
+  ) +
+  geom_nodes(aes(fill = Phylum,
+                 shape = role_name,
+                 size = node_size)) +
+  facet_wrap(~origin) +
+  scale_shape_manual(values = c('Connectors' = 23, 
+                                'Network hubs' = 24, 
+                                'Peripherals' = 21)) +
+  scale_fill_manual(values = phyla_colors) +
+  guides(fill = guide_legend(override.aes = list(shape=21))) +
+  labs(title = 'Metabolic Interaction Potential network') +
+  scale_size_continuous(range = c(.5, 2)) +
+  theme_blank() +
+  theme(legend.position = 'none',
+        plot.title = element_text(face = 'bold', hjust = 0.5, size = 7),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 6))
+
+
+met_network
+```
+
+# 4. Shared metabolites
+
+## 4.1 Classifying metabolites
+
+```{r}
+bigg_metabolites_complete <- read_tsv('data/networks/bigg_metabolites.tsv') 
+
+bigg_metabolites <- bigg_metabolites_complete %>% 
+  select(universal_bigg_id, name) %>% 
+  distinct()
+
+detailed_metabolites <- detailed_results %>% 
+  select(compound) %>% 
+  distinct() %>% 
+  mutate(compound = str_remove_all(compound, 'M_|_e')) %>% 
+  inner_join(bigg_metabolites, by = c('compound' = 'universal_bigg_id'))
+
+classified  <-  list(`nitrogen\nmetabolites` = c('no3', 'no2', 'n2', 'nh3', 
+                                                 'n2o', 'nh4',
+                                                 'no', 'hae', 'urea') %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     `amino\nacids` = c('arg__L', 'his__L', 'lys__L', 
+                                        'asp__L', 'glu__L', 'ser__L', 
+                                        'thr__L', 'asn__L', 'gln__L', 
+                                        'cys__L', 'selcys', 'gly', 
+                                        'pro__L', 'ala__L', 'val__L', 
+                                        'ile__L', 'leu__L', 'met__L', 
+                                        'phe__L', 'tyr__L', 'trp__L', 
+                                        'orn', 'orn__L', 'hom__L', 'argp',
+                                        'asp__D', 'agm', 'glyb', 'citr__L', 
+                                        'ala__D')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     `sulfur\nmetabolites`  = c('so4', 'aps', 'paps', 'so3', 
+                                                'h2s', 'tsul', 'acser',
+                                                'cys__L', 's', 'ch4s') %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     peptides  = c('LalaDgluMdap', 'alaala', 'cgly', 
+                                   'etha')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     sugars  = c('rib', 'cellb', 'glc__D', 'inost', 'man1p', 
+                                 'lcts', 'f6p',
+                                 'gal', 'abt__L', 'xyl__D', '6pgc', 'galur', 
+                                 'glcn', 'g6p_B',
+                                 'arab__D', 'dha', 'mnl1p')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     aromatics  = c('tol', 'glyald', 'bz', 'indole', 
+                                    '4abz', 'pacald', '4hba', '4hbz',
+                                    'pea', 'bzal', 'pac', 'catechol', 
+                                    'id3acald')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     `carboxylic\nacids`  = c('oxa', 'acac', 'ac', 'cit', 
+                                              'lac__L', 'mal__L', 'fum',
+                                              'akg')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     `fatty acids\nand related`  = c('for', '2obut', 
+                                                     'ppap', 'actn__R', 
+                                                     '4abut', 'succ',
+                                                     'R_3hhdca', 'glcr', 
+                                                     'galct__D', 'ocdcea', 'bhb',
+                                                     'R_3hdcaa',
+                                                     'R_3hocta', 
+                                                     'R_3hdda', 
+                                                     'R_3hhxa', 'R_3httdca', 
+                                                     'R_3hpt',
+                                                     'R_3htd5e')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     `purine, pirimidine\nand derivatives`  = c('hxan', 
+                                                                'gua', 'thym', 
+                                                                'thymd', 'ura',
+                                                                'xan', 'ins', 
+                                                                'ads', 'gsn', '3cmp',
+                                                                '3gmp', 
+                                                                '3amp', 'cytd')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     alcohol  = c('etoh', '12ppd__R', 'meoh', 
+                                  '12ppd__S', 'btd_RR')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     `vitamins, cofactors\nand related`  = c('nac', 'pnt__R', 
+                                                             'thm', 'ncam', 'pydxn',
+                                                             'gthrd')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     siderophore  = c('salchs4fe', 'fe3pyovd_k', 
+                                      'istfrnA', 'pyovd_kt', 'fe3dcit',
+                                      'istfrnB', 'stfrnA', 'stfrnB')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     other  = c('anhgm', 'coa', 'co2', 'h2o2', 'ptrc', 'spmd',
+                                'udcpp', 'co', 'forglu', 'gam6p', 
+                                'acgam1p', 'o2', 'R_3hcmrs7e',
+                                '5dglcn', '2dglcn', 'acald', 'hco3', 
+                                'pheme', 'glyclt', 'chol',
+                                'quin', 'tre6p', 'acglu', 'diact', 
+                                'dxylnt', 'fald', 'ppal', '4abutn',
+                                'gcald', '4hpro_LT', 'cell4')  %>% 
+                       str_c('M_', ., '_e'),
+                     
+                     `lipids\nand related`  = c('g3pe', 'g3pg', 'glyc', 
+                                                'glyc3p', 'dhap')  %>% 
+                       str_c('M_', ., '_e'))
+
+classified_df <- imap(classified, function(x, y){
+  
+  df <- tibble(compound = x) %>% 
+    mutate(group = y)
+  
+}) %>% reduce(rbind)
+
+```
+
+## 4.2 Plot of hubs
+
+```{r}
+hubs <- met_net_df %>% 
+  filter(role_name == 'Network hubs') %>% 
+  pull(name) %>% 
+  unique()
+
+detailed_filtered_hubs <- detailed_results %>% 
+  mutate(across(c(receiver, donor), ~str_remove(.x, '_genes.*'))) %>% 
+  filter(smetana > 0.1 | compound %in% classified$nitrogen_metabolites |
+           compound %in% classified$sulfur_metabolites,
+         receiver %in% hubs | donor %in% hubs,
+         !(receiver %in% hubs & donor %in% hubs)) %>% 
+  mutate(interaction_role = ifelse(receiver %in% hubs, 'Receives', 'Donates'),
+         hub_bac = ifelse(interaction_role == 'Receives', receiver, donor),
+         companion_bac = ifelse(interaction_role == 'Receives', donor, receiver)) %>% 
+  inner_join(mag_taxonomy, by = c('companion_bac' = 'bin')) %>% 
+  group_by(hub_bac, interaction_role, Phylum, compound) %>% 
+  count() %>% 
+  inner_join(classified_df) %>% 
+  mutate(compound = str_remove_all(compound, 'M_|_e')) %>% 
+  left_join(bigg_metabolites, by = c('compound' = 'universal_bigg_id')) %>% 
+  inner_join(mag_taxonomy %>% select(bin, Phylum_hub = Phylum), by = c('hub_bac' = 'bin'))
+
+shared_metabolites_plot <- detailed_filtered_hubs %>% 
+  mutate(net = ifelse(hub_bac == 'bco_bin_18_1', 'Wet MPI network', 'Dry MPI network'),
+         hub_bac = str_c(hub_bac, '\n', Phylum_hub)) %>% 
+  filter(group %in% c('amino\nacids', 'aromatics', 
+                      'nitrogen\nmetabolites',
+                      # 'sulfur\nmetabolites', 
+                      # 'carboxylic\nacids', 
+                      # 'fatty acids\nand related', 
+                      'sugars')) %>% 
+  mutate(name = case_when(str_detect(name, 'Arabinose') ~ 'D-Arabinose',
+                          str_detect(name, 'Fructose') ~ 'D-Fructose-6P',
+                          str_detect(name, 'gluconate') ~ '6P-gluconate',
+                          TRUE ~ name)) %>% 
+  ggplot() +
+  geom_tile(aes(x = Phylum,
+                y = name,
+                fill = Phylum_hub),
+            color = 'white',
+            show.legend = FALSE) +
+  facet_grid2(cols = vars(net, hub_bac,interaction_role),
+              rows = vars(group),
+              scales = 'free',
+              space = 'free',
+              strip = strip_nested(size = 'variable',
+                                   clip = 'off',
+                                   text_y = elem_list_text(
+                                     angle = c(rep(90, 7),
+                                               rep(0, 37))
+                                   )),
+              switch = 'y') +
+  scale_fill_manual(values = phyla_colors) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 5),
+        strip.text.y.left = element_text(size = 5),
+        plot.title = element_text(face = 'bold', hjust = 0.5),
+        axis.text.y = element_text(size = 5),
+        strip.text.x = element_text(size = 5),
+        legend.text = element_text(size = 5),
+        legend.title = element_text(size = 7),
+        axis.title = element_blank(),
+        strip.background = element_blank(),
+        strip.placement = 'outer',
+        panel.spacing = unit(0.05, 'lines'))
+
+shared_metabolites_plot
+```
+
+# 5. Merging
+
+## 5.1 Creating legend for networks
+
+```{r}
+leg_plot <- tibble(Phylum = unique(single_net_df$Phylum),
+                   `Topological role` = c(rep('Connectors', 3), 
+                                          rep('Peripherals', 4), 
+                                          rep('Network hubs', 4))) %>% 
+  ggplot() +
+  geom_point(aes(x = Phylum,
+                 y = `Topological role`,
+                 fill = Phylum,
+                 shape = `Topological role`)) +
+  scale_shape_manual(values = c('Connectors' = 23, 
+                                'Network hubs' = 24, 
+                                'Peripherals' = 21)) +
+  scale_fill_manual(values = phyla_colors) +
+  
+  geom_hline(aes(yintercept = 1,
+                 color = 'Negative')) +
+  geom_hline(aes(yintercept = 2,
+                 color = 'Positive')) +
+  scale_color_manual(values = c('Negative' = 'steelblue', 
+                                'Positive' = 'indianred2'),
+                     guide = guide_legend(nrow = 3)) +
+  labs(color = 'Correlation\n(Co-ocurrence network)') +
+  guides(fill = guide_legend(override.aes = list(shape=21)),
+         shape = guide_legend(nrow = 3)) +
+  theme_blank() +
+  theme(legend.position = 'bottom',
+        legend.title.position = 'top',
+        strip.text = element_text(size = 5),
+        legend.text = element_text(size = 5),
+        legend.title = element_text(size = 5),
+        legend.key.spacing.y = unit(.01, 'lines'),
+        legend.key.spacing.x = unit(.5, 'lines'),
+        legend.key.size = unit(0, 'lines'))
+
+leg_ready <- get_legend(leg_plot)
+```
+
+
+## 5.2 Merging Figure
+
+```{r}
+lay <- "
+AB
+CC
+DD
+"
+
+fig5 <- single_net_plot + met_network + leg_ready + 
+  free(shared_metabolites_plot) +
+  plot_layout(design = lay,
+              heights = c(1,.1,1.7)) +
+  plot_annotation(tag_levels = list(c('A', 'B', '', 'C')))
+
+ggsave('output_figures/Figure_5.svg', fig5, dpi = 300, 
+       height = 185, width = 180, units = 'mm')
+```
+
+# Supplementary Table 2
+
+## Network level index
+
+```{r}
+
+test <- net_properties(graph_rmt$Dry)
+transitivity(graph_rmt$Dry)
+sna::stresscent(as.matrix(as_adjacency_matrix(graph_rmt$Dry)))
+
+zz <- cluster_fast_greedy(graph_rmt$Dry)
+length(zz)
+
+co_dry_netindex <- network_stats(graph_rmt$Dry) %>% 
+  mutate(net = 'Dry',
+         type = 'Co-occurrence')
+
+co_wet_netindex <- network_stats(graph_rmt$Wet) %>% 
+  mutate(net = 'Wet',
+         type = 'Co-occurrence')
+
+met_dry_netindex <- network_stats(dry_met_network) %>% 
+  mutate(net = 'Dry',
+         type = 'Metabolic')
+
+met_wet_netindex <- network_stats(wet_met_network) %>% 
+  mutate(net = 'Wet',
+         type = 'Metabolic')
+
+all_netindex <- rbind(co_dry_netindex, co_wet_netindex,
+                      met_dry_netindex, met_wet_netindex) %>% 
+  filter(!(index %in% c('num.pos.edges', 'num.neg.edges'))) %>% 
+  unite(Network, type, net, sep = ' - ') %>% 
+  pivot_wider(names_from = Network, values_from = value) 
+
+write_csv(all_netindex, 'output_tables/Supplementary_table_2.csv')
+```
+
+
+
+
+
+
+
+
+
+

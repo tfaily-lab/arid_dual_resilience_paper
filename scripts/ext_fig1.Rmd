@@ -1,0 +1,133 @@
+---
+title: "Extended Figure 1"
+author: "Christian Ayala-Ortiz"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(patchwork)
+library(ggpubr)
+library(dendextend)
+library(ggtree)
+library(tidyverse)
+source('scripts/custom_functions.R')
+```
+
+# Hierarchical clustering
+
+```{r}
+env_data <- load_environmental_data() %>% 
+  mutate(C_N = total_C / total_N) %>% 
+  select(-Na, -total_C, -Mg, -V, -Cr, -Co, -As, -Ca) %>% 
+  decostand(., method = 'standardize')
+
+env_dend <- dist(env_data, method = 'manhattan') %>% 
+  hclust() 
+
+metadata <- load_metadata()
+
+pretree <- ggtree(env_dend, branch.length = 'none')
+
+for_annot_dend <- pretree$data %>% 
+  left_join(metadata, by = c('label' = 'asv_sample'))
+
+month_colors <- load_colors('month')
+
+final_tree <- ggtree(env_dend, branch.length = 'none') +
+  geom_tiplab(size = 2,
+              aes(x = x +.2)) +
+  geom_tippoint(data = for_annot_dend,
+                aes(x = x,
+                    y = y,
+                    color = month),
+                size = 1.2) +
+  #geom_nodelab(aes(label = node)) +
+  scale_color_manual(values = month_colors) +
+  xlim(-4, 12) +
+  labs(color = 'Month',
+       fill = 'Condition') +
+  scale_fill_manual(values = c('tan', 'steelblue')) +
+  theme(legend.position = 'bottom',
+        text = element_text(size = 7),
+        legend.direction = 'horizontal',
+        legend.box = 'vertical',
+        legend.spacing.x = unit(0.1, 'lines'),
+        legend.key.size = unit(.5, 'lines'))
+```
+
+# Precipitation plot
+
+```{r}
+list_prec_data <- paste0('https://www.ncei.noaa.gov/pub/data/uscrn/',
+                         'products/daily01/',
+                         2010:2024, 
+                         '/CRND0103-', 2010:2024, '-AZ_Tucson_11_W.txt')
+
+prec_df <- map(list_prec_data, function(x){
+  df <- read_table(x, col_names = FALSE) %>% 
+    select(LST_DATE = X2, P_DAILY_CALC = X10)
+})
+
+
+prec_df_ready <- reduce(prec_df, rbind) %>% 
+  mutate(date = ymd(LST_DATE),
+         P_DAILY_CALC = ifelse(P_DAILY_CALC < 0, NA, P_DAILY_CALC),
+         year = year(date),
+         year = as.factor(year),
+         day = day(date),
+         month = month(date),
+         fake_date = map(date, function(x){
+           year(x) <- 2021
+           
+           return(x)
+         }) %>% reduce(., `c`),
+         prec_roll = zoo::rollmean(P_DAILY_CALC, 7, fill = NA)) 
+
+colors <- set_names(c(get_palette('Greens', 6)[2:6], get_palette('Blues', 6)[2:6],
+                      get_palette('Purples', 6)[2:6]),
+                    nm = as.character(2010:2024))
+
+colors['2021'] <- 'red'
+
+prec_plot <- prec_df_ready %>% 
+  ggplot(aes(x = fake_date, 
+             y = prec_roll,
+             color = year)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_point(data = . %>% filter(year == 2021)) +
+  geom_line(data = . %>% filter(year == 2021)) +
+  # scale_y_continuous(limits = c(0, 110)) +
+  scale_x_date(date_labels = '%b %d',
+               breaks = '1 month',
+               expand = c(0, 0)) +
+  labs(y = 'Precipitation\n[mm]') +
+  scale_color_manual(values = colors) +
+  custom_theme +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.title = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        legend.position = 'bottom') 
+
+prec_plot
+```
+
+
+# Unite figure
+
+```{r}
+ext_fig <- final_tree + prec_plot +
+  plot_annotation(tag_levels = 'A') &
+  theme(plot.tag = element_text(size = 10))
+
+ext_fig
+ggsave('output_figures/Ext_Figure_1.svg', ext_fig, dpi = 300,
+       width = 180, height = 185, units = 'mm')
+```
+
+
+
+
