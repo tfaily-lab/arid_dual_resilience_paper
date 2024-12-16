@@ -10,6 +10,8 @@ data/mash_distances/*
 data/definitions/expression_per_sample_cnps_10-31_fixed.csv
 data/definitions/expression_per_sample_traits_10-31.csv
 output_tables/Supplementary*
+docs/
+*.png
 
 # History files
 .Rhistory

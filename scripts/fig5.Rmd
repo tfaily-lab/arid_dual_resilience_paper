@@ -594,7 +594,7 @@ all_netindex <- rbind(co_dry_netindex, co_wet_netindex,
   unite(Network, type, net, sep = ' - ') %>% 
   pivot_wider(names_from = Network, values_from = value) 
 
-write_csv(all_netindex, 'output_tables/Supplementary_table_2.csv')
+write_csv(all_netindex, 'output_tables/Supplementary_table_4.csv')
 ```
 
 

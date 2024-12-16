@@ -4,23 +4,36 @@ author: "Christian Ayala Ortiz"
 date: "`r Sys.Date()`"
 output: html_document
 ---
+# Load libraries
+
+```{r}
+library(ggh4x)
+library(ggpubr)
+library(patchwork)
+library(readxl)
+library(tidyverse)
+source('scripts/custom_functions.R')
+```
+
+# Process data
 
 ```{r}
 metadata <- load_metadata()
+mag_taxonomy <- load_mag_taxonomy()
 
-aa_dram <- read_xlsx("data/metabolism_summary.xlsx", 
+aa_dram <- read_xlsx("data/dram_annotations/metabolism_summary.xlsx", 
                      sheet = 'Organic Nitrogen') %>% 
   select(gene_id, gene_description, module, header) %>% 
   filter(header == 'Amino Acid') %>% 
   mutate(module = str_remove(module, ',.*')) %>% 
   filter(str_detect(module, 'biosynthesis'))
 
-def <- read_csv("data/new_def/definitions_C_N_S_P_11_14_24.csv") %>% 
+def <- read_csv("data/definitions/definitions_C_N_S_P_11_14_24.csv") %>% 
   filter(Category_2 == 'Phosphate and amino acid transporters') 
 
-annotations <- read_tsv("data/annotations_merged.tsv")
+annotations <- read_tsv("data/dram_annotations//annotations_merged.tsv")
 
-geTMM <- read_csv("data/geTMM_normalized_matrix_2024.csv")
+geTMM <- read_csv("data/metaT//geTMM_normalized_matrix_2024.csv")
 
 geTMM_long <- geTMM %>% 
   pivot_longer(!Geneid, names_to = "sampleid", values_to = "geTMM") %>% 
@@ -47,7 +60,7 @@ annot_completeness_plot <- annot_completeness %>%
               scales = 'free',
               space = 'free',
               strip = strip_themed(clip = 'off')) +
-  scale_fill_distiller(palette = 'YlOrRd', direction = 1,
+  scale_fill_distiller(palette = 'Oranges', direction = 1,
                        labels = scales::percent) +
   custom_theme +
   theme(strip.text.x = element_text(angle = 90),
@@ -87,7 +100,7 @@ annot_AA_plot <- annot_AA %>%
             color = 'white') +
   facet_grid2(cols = vars(Phylum),
               strip = strip_themed(clip = 'off')) +
-  scale_fill_distiller(palette = 'PuBu', direction = 1) +
+  scale_fill_distiller(palette = 'PuBuGn', direction = 1) +
   custom_theme +
   theme(axis.title = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
@@ -125,7 +138,7 @@ trans_AA_plot <- AA_trans %>%
             color = 'white') +
   facet_grid2(cols = vars(Phylum),
               strip = strip_themed(clip = 'off')) +
-  scale_fill_distiller(palette = 'PuBu', direction = 1) +
+  scale_fill_distiller(palette = 'PuBuGn', direction = 1) +
   custom_theme +
   theme(axis.title = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
@@ -145,6 +158,6 @@ ext_fig6 <- annot_completeness_plot + annot_AA_plot + trans_AA_plot +
 
 # ext_fig6
 
-ggsave('updated_figures/ext_figure6.svg', ext_fig6, dpi = 300, 
+ggsave('output_figures/Ext_Figure_6.svg', ext_fig6, dpi = 300, 
        height = 185, width = 180, units = 'mm')
 ```

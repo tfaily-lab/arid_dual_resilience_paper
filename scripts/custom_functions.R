@@ -349,7 +349,7 @@ create_network_zipi <- function(edges, nodes){
                                  directed = FALSE, 
                                  vertices = nodes)
   
-  node_par <- net_par(graph, mode = 'v')$v_index
+  node_par <- net_par(graph, mode = 'all')$v_index
   
   greedy_modules <- module_detect(graph, method = 'cluster_fast_greedy')
   

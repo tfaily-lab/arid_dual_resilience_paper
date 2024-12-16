@@ -541,7 +541,9 @@ DC
 fig1 <- wrap_elements() + wrap_elements() + final + free(pca_plot) +
   plot_layout(design = lay,
               widths = c(1.5, 1)) +
-  plot_annotation(tag_levels = list(c('A', 'B', 'D', '', '', '', '', '', '', 'C')))
+  plot_annotation(tag_levels = list(c('A', 'B', 'C', '', '', '', '', '', '', 'D')))
+
+fig1
 
 ggsave('output_figures/incomplete_figure1.svg', fig1, dpi = 300,
        width = 180, height = 185, units = 'mm')

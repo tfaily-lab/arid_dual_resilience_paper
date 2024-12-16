@@ -119,13 +119,13 @@ prec_plot
 # Unite figure
 
 ```{r}
-ext_fig <- final_tree + prec_plot +
+ext_fig <- prec_plot + final_tree + 
   plot_annotation(tag_levels = 'A') &
   theme(plot.tag = element_text(size = 10))
 
 ext_fig
 ggsave('output_figures/Ext_Figure_1.svg', ext_fig, dpi = 300,
-       width = 180, height = 185, units = 'mm')
+       width = 180, height = 120, units = 'mm')
 ```
 
 
