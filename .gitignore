@@ -9,6 +9,10 @@ data/preprocessed_data/ASV_matrix_rarefied.csv
 data/mash_distances/*
 data/definitions/expression_per_sample_cnps_10-31_fixed.csv
 data/definitions/expression_per_sample_traits_10-31.csv
+data/expression/annotations_merged.tsv
+data/expression/expression_per_sample_cnps_10-31_fixed.csv
+data/expression/expression_per_sample_traits_10-31.csv
+data/expression/geTMM_normalized_matrix_2024.csv
 data/other_datasets/*
 data/expression_Thermo*
 data/networks/*
