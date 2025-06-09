@@ -19,7 +19,7 @@ source('scripts/custom_functions.R')
 ```{r}
 env_data <- load_environmental_data() %>% 
   mutate(C_N = total_C / total_N) %>% 
-  select(-Na, -total_C, -Mg, -V, -Cr, -Co, -As, -Ca) %>% 
+  select(-Na, -total_C, -Mg, -V, -Cr, -Co, -As, -Ca, -air_temperature) %>% 
   decostand(., method = 'standardize')
 
 env_dend <- dist(env_data, method = 'manhattan') %>% 
@@ -42,7 +42,6 @@ final_tree <- ggtree(env_dend, branch.length = 'none') +
                     y = y,
                     color = month),
                 size = 1.2) +
-  #geom_nodelab(aes(label = node)) +
   scale_color_manual(values = month_colors) +
   xlim(-4, 12) +
   labs(color = 'Month',
@@ -54,6 +53,8 @@ final_tree <- ggtree(env_dend, branch.length = 'none') +
         legend.box = 'vertical',
         legend.spacing.x = unit(0.1, 'lines'),
         legend.key.size = unit(.5, 'lines'))
+
+final_tree
 ```
 
 # Precipitation plot
@@ -94,9 +95,12 @@ prec_plot <- prec_df_ready %>%
   ggplot(aes(x = fake_date, 
              y = prec_roll,
              color = year)) +
-  geom_point(size = 2) +
-  geom_line() +
-  geom_point(data = . %>% filter(year == 2021)) +
+  geom_point(size = .6,
+             alpha = 0.6) +
+  geom_line(linewidth = .1,
+            alpha = 0.6) +
+  geom_point(data = . %>% filter(year == 2021),
+             size = .8) +
   geom_line(data = . %>% filter(year == 2021)) +
   # scale_y_continuous(limits = c(0, 110)) +
   scale_x_date(date_labels = '%b %d',
@@ -123,8 +127,8 @@ ext_fig <- prec_plot + final_tree +
   plot_annotation(tag_levels = 'A') &
   theme(plot.tag = element_text(size = 10))
 
-ext_fig
-ggsave('output_figures/Ext_Figure_1.svg', ext_fig, dpi = 300,
+# ext_fig
+ggsave('updated_figures/Supplementary_Figure_1.svg', ext_fig, dpi = 300,
        width = 180, height = 120, units = 'mm')
 ```
 

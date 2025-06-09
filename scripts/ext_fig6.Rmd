@@ -1,163 +1,91 @@
 ---
-title: "Extended Figure 6"
+title: "Carbon and Nitrogen Metabolism"
 author: "Christian Ayala Ortiz"
 date: "`r Sys.Date()`"
 output: html_document
 ---
-# Load libraries
 
 ```{r}
 library(ggh4x)
 library(ggpubr)
-library(patchwork)
-library(readxl)
 library(tidyverse)
 source('scripts/custom_functions.R')
 ```
 
-# Process data
+
+# Load data
 
 ```{r}
-metadata <- load_metadata()
-mag_taxonomy <- load_mag_taxonomy()
+mag_taxonomy <- load_mag_taxonomy() %>% 
+  group_by(Phylum) %>% 
+  mutate(n = n()) %>% 
+  mutate(Phylum_n = str_c(Phylum, ' (', n, ')'))
 
-aa_dram <- read_xlsx("data/dram_annotations/metabolism_summary.xlsx", 
-                     sheet = 'Organic Nitrogen') %>% 
-  select(gene_id, gene_description, module, header) %>% 
-  filter(header == 'Amino Acid') %>% 
-  mutate(module = str_remove(module, ',.*')) %>% 
-  filter(str_detect(module, 'biosynthesis'))
+phyla_colors <- set_names(get_palette('Paired', 18),
+                          nm =sort(unique(mag_taxonomy$Phylum)))
 
-def <- read_csv("data/definitions/definitions_C_N_S_P_11_14_24.csv") %>% 
-  filter(Category_2 == 'Phosphate and amino acid transporters') 
+cnps_df <- read_csv('data/definitions/metaG_presence_10-31.csv') %>% 
+  filter(!str_detect(m_id, 'Trait'),
+         def != 'K08094 K13831')
 
-annotations <- read_tsv("data/dram_annotations//annotations_merged.tsv")
+cnps_ids <- read_csv('data/definitions/definitions_C_N_S_P_11_14_24.csv') %>% 
+  arrange(Module_id) %>% 
+  group_by(Category_1) %>% 
+  mutate(order = n():1,
+         rx_per_path = n())
+```
 
-geTMM <- read_csv("data/metaT//geTMM_normalized_matrix_2024.csv")
-
-geTMM_long <- geTMM %>% 
-  pivot_longer(!Geneid, names_to = "sampleid", values_to = "geTMM") %>% 
-  mutate(sampleid = str_replace(sampleid, '/xdisk/.*/R', 'D'))
-
-annot_completeness <- aa_dram %>% 
-  group_by(module) %>% 
-  mutate(n_genes = n()) %>% 
-  inner_join(annotations, by = c('gene_id' = 'ko_id')) %>% 
-  select(gene_id, module, fasta, n_genes) %>% 
+```{r}
+cpns_presence <- cnps_df %>% 
+  inner_join(mag_taxonomy, by = 'bin') %>% 
+  inner_join(cnps_ids, by = c('m_id' = 'Module_id')) %>% 
   distinct() %>% 
-  group_by(fasta, module, n_genes) %>%
-  count() %>% 
-  mutate(completeness = n/n_genes) %>% 
-  inner_join(mag_taxonomy, by = c('fasta' = 'bin'))
+  filter(!(Category_2 %in% c('Methane metabolism')))
 
-annot_completeness_plot <- annot_completeness %>% 
+cpns_binplot <- cpns_presence %>% 
+  filter(present) %>% 
+  group_by(Phylum, bin, Category_2, Category_1, rx_per_path) %>% 
+  summarise(rx_present = n()) %>% 
+  ungroup() %>% 
+  mutate(perc_present = rx_present / rx_per_path) %>% 
   ggplot() +
-  geom_tile(aes(x = fasta,
-                y = module,
-                fill = completeness),
-            color = 'white') +
-  facet_grid2(cols = vars(Phylum),
+  geom_tile(aes(x = bin,
+                y = Category_1,
+                fill = perc_present)) +
+  facet_grid2(rows = vars(Category_2),
+              cols = vars(Phylum),
               scales = 'free',
               space = 'free',
-              strip = strip_themed(clip = 'off')) +
+              strip = strip_nested(size = 'variable',
+                                   text_x = element_text(angle = 90),
+                                   background_x = element_blank(),
+                                   clip = 'off'),
+              switch = 'y') +
   scale_fill_distiller(palette = 'Oranges', direction = 1,
                        labels = scales::percent) +
-  custom_theme +
-  theme(strip.text.x = element_text(angle = 90),
-        panel.spacing = unit(0.05, 'lines'),
+  labs(fill = 'Pathway Completeness [%]') +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        strip.text.y.left = element_text(angle = 0),
         axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 4),
-        legend.position = 'bottom',
-        legend.key.width = unit(.7, 'lines'),
-        legend.box.spacing = unit(0.05, 'lines'),
-        plot.margin = unit(c(0.05, 0.05, 0.05, 0.05), 'lines'),
         axis.title = element_blank(),
-        axis.ticks.x = element_blank())
-  
-annot_completeness_plot
-
-annot_AA <- annotations %>% 
-  select(Gene_id = ...1, fasta, ko_id) %>% 
-  inner_join(aa_dram, by = c('ko_id' = 'gene_id')) %>% 
-  inner_join(geTMM_long, by = c('Gene_id' = 'Geneid')) %>% 
-  group_by(ko_id, fasta, module, header, sampleid) %>% 
-  summarise(geTMM = sum(geTMM)) %>% 
-  group_by(fasta, module, header, sampleid) %>% 
-  summarise(geTMM = mean(geTMM)) %>% 
-  inner_join(mag_taxonomy, by = c('fasta' = 'bin')) %>%
-  group_by(Phylum, module, header, sampleid) %>% 
-  summarise(geTMM = mean(geTMM)) %>% 
-  inner_join(metadata, by = c('sampleid' = 'sample')) %>% 
-  group_by(Phylum, module, header, month) %>% 
-  summarise(geTMM = sum(geTMM)) %>% 
-  filter(geTMM > 0)
-  
-annot_AA_plot <- annot_AA %>% 
-  ggplot() +
-  geom_tile(aes(x = month,
-                y = module,
-                fill = log(geTMM)),
-            color = 'white') +
-  facet_grid2(cols = vars(Phylum),
-              strip = strip_themed(clip = 'off')) +
-  scale_fill_distiller(palette = 'PuBuGn', direction = 1) +
-  custom_theme +
-  theme(axis.title = element_blank(),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        strip.text.x = element_text(angle = 90),
-        panel.spacing = unit(0.05, 'lines'),
-        axis.text = element_text(size = 4),
+        strip.placement = 'outer',
+        axis.text.y = element_text(size = 4),
+        strip.text = element_text(size = 5),
+        legend.text = element_text(size = 5),
+        legend.title = element_text(size = 5),
         legend.position = 'bottom',
-        legend.key.width = unit(.7, 'lines'),
-        legend.box.spacing = unit(0.05, 'lines'),
-        plot.margin = unit(c(0.05, 0.05, 0.05, 0.05), 'lines'))
+        axis.ticks.x = element_blank(),
+        panel.spacing = unit(0.1, 'lines'),
+        panel.border = element_rect(linewidth = .1)
+  ) 
 
-annot_AA_plot
+# cpns_binplot
 
-AA_trans <- annotations %>% 
-  select(Gene_id = ...1, fasta, ko_id) %>% 
-  inner_join(def, by = c('ko_id' = 'Definition')) %>% 
-  inner_join(geTMM_long, by = c('Gene_id' = 'Geneid')) %>% 
-  group_by(ko_id, fasta, Category_1, Module_id, sampleid) %>% 
-  summarise(geTMM = sum(geTMM)) %>% 
-  group_by(fasta, Category_1, Module_id, sampleid) %>% 
-  summarise(geTMM = mean(geTMM)) %>% 
-  inner_join(mag_taxonomy, by = c('fasta' = 'bin')) %>%
-  group_by(Phylum, Category_1, Module_id, sampleid) %>% 
-  summarise(geTMM = mean(geTMM)) %>% 
-  inner_join(metadata, by = c('sampleid' = 'sample')) %>% 
-  group_by(Phylum, Category_1, Module_id, month) %>% 
-  summarise(geTMM = sum(geTMM)) %>% 
-  filter(geTMM > 0)
-
-trans_AA_plot <- AA_trans %>% 
-  ggplot() +
-  geom_tile(aes(x = month,
-                y = Category_1,
-                fill = log(geTMM)),
-            color = 'white') +
-  facet_grid2(cols = vars(Phylum),
-              strip = strip_themed(clip = 'off')) +
-  scale_fill_distiller(palette = 'PuBuGn', direction = 1) +
-  custom_theme +
-  theme(axis.title = element_blank(),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        axis.text = element_text(size = 4),
-        strip.text.x = element_text(angle = 90),
-        panel.spacing = unit(0.05, 'lines'),
-        legend.position = 'bottom',
-        legend.key.width = unit(.7, 'lines'),
-        legend.box.spacing = unit(0.05, 'lines'),
-        plot.margin = unit(c(0.05, 0.05, 0.05, 0.05), 'lines'))
-
-trans_AA_plot
-
-ext_fig6 <- annot_completeness_plot + annot_AA_plot + trans_AA_plot +
-  plot_layout(ncol = 1, heights = c(1.5, 1.5, 1)) +
-  plot_annotation(tag_levels = 'A')
-
-# ext_fig6
-
-ggsave('output_figures/Ext_Figure_6.svg', ext_fig6, dpi = 300, 
-       height = 185, width = 180, units = 'mm')
+ggsave('output_figures/Supplementary_Figure_6.svg', cpns_binplot, dpi = 300,
+       height = 185, width = 190, units = 'mm')
+ggsave('output_figures/Supplementary_Figure_6.png', cpns_binplot, dpi = 300,
+       height = 185, width = 190, units = 'mm')
 ```
+
+

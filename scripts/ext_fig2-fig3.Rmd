@@ -1,0 +1,638 @@
+---
+title: "Extended Figure 2"
+author: "Christian Ayala Ortiz"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Load libraries
+
+```{r setup, include=FALSE}
+library(vegan)
+library(phyloseq)
+library(tidyverse)
+library(ggh4x)
+library(ggpubr)
+library(patchwork)
+source('scripts/custom_functions.R')
+```
+
+# Loading data
+
+## Microbial data
+
+```{r}
+metadata <- load_metadata()
+
+asv_data <- load_asv_data_rarefied(prev_min_counts = 0,
+                                   prev_min_samples = 4,
+                                   normalize_sum = FALSE)
+
+asv_taxonomy <- load_asv_taxonomy() %>% 
+  mutate(Phylum_lump = fct_lump_n(Phylum, 8))
+
+singlem_rplP <- load_singlem_data(which = 'counts',
+                                  prev_min_counts = 1,
+                                  prev_min_samples = 2,
+                                  normalize_sum = FALSE)
+
+set.seed(123)
+singlem_rarefied <- rrarefy(singlem_rplP, 800) %>% 
+  as.data.frame()
+```
+
+## Organic matter data
+
+```{r}
+fticr_pos <- load_fticr_data(mode = 'positive',
+                             prev_min_counts = 0,
+                             prev_min_samples = 2,
+                             normalize_sum = FALSE)
+
+fticr_annot_pos <- load_fticr_annot(mode = 'positive')
+```
+
+## Color vectors
+
+```{r}
+phyl_color <- set_names(
+  c(ggpubr::get_palette('Paired', 8), 'gray60'),
+  nm = levels(asv_taxonomy$Phylum_lump)
+)
+
+month_color <- load_colors('month')
+stage_color <- load_colors('stage')
+```
+
+# Taxonomic profiles
+
+## ASV
+
+```{r}
+asv_ra <- asv_data %>% 
+  decostand(method = 'total') %>% 
+  rownames_to_column(var = 'sample') %>% 
+  pivot_longer(!sample, names_to = 'ASV', values_to = 'abundance') %>% 
+  inner_join(metadata, by = c('sample' = 'asv_sample')) %>% 
+  inner_join(asv_taxonomy, by = 'ASV') %>% 
+  group_by(sample, Phylum_lump, month) %>% 
+  summarise(abundance = sum(abundance)) 
+
+asv_tax_plot <- asv_ra  %>% 
+  group_by(Phylum_lump, month) %>% 
+  summarise(abundance = mean(abundance)) %>% 
+  ggplot() +
+  geom_col(aes(x = month,
+               y = abundance,
+               fill = Phylum_lump),
+           color = 'black',
+           linewidth = .2) +
+  scale_fill_manual(values = phyl_color) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = 'Taxonomy profile - ASV',
+       y = 'Relative Abundance',
+       fill = 'Phylum') +
+  #guides(fill = guide_legend(nrow = 5)) +
+  custom_theme +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.key.spacing.y = unit(.01, 'lines'),
+        legend.key.spacing.x = unit(.01, 'lines'),
+        legend.key.size = unit(.3, 'lines'),
+        legend.title.position = 'top',
+        legend.box.spacing = unit(0, 'lines'))
+
+asv_tax_plot
+```
+
+# Organic matter profiles
+
+## FTICR positive
+
+### Molecular Class
+
+```{r}
+fticr_class_pos <- fticr_pos %>% 
+  rownames_to_column(var = 'sample') %>% 
+  pivot_longer(!sample, names_to = 'Mass', values_to = 'intensity') %>% 
+  filter(sample %in% metadata$asv_sample) %>% 
+  mutate(Mass = as.numeric(Mass)) %>% 
+  group_by(sample) %>% 
+  inner_join(fticr_annot_pos, by = 'Mass') %>%
+  mutate(perc = intensity/sum(intensity)) %>%
+  inner_join(metadata, by = c('sample' = 'asv_sample')) %>%
+  group_by(sample, month, Class) %>% 
+  summarise(perc = sum(perc)) %>% 
+  group_by(month, Class) %>%
+  summarise(perc = mean(perc))
+
+fticr_class_pos_plot <- fticr_class_pos %>% 
+  ggplot() +
+  geom_col(aes(x = month,
+               y = perc,
+               fill = Class),
+           color = 'black',
+           linewidth = .2) +
+  scale_fill_manual(values = get_palette('Dark2', 9)) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = 'Molecular Class - FTICR-MS',
+       y = 'Relative Abundance') +
+  custom_theme +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.key.spacing.y = unit(.01, 'lines'),
+        legend.key.spacing.x = unit(.01, 'lines'),
+        legend.key.size = unit(.3, 'lines'),
+        legend.title.position = 'top',
+        legend.box.spacing = unit(0, 'lines'))
+
+fticr_class_pos_plot
+```
+
+# Beta diversity analysis
+
+## ASV
+
+```{r}
+asv_bray <- vegdist(asv_data, method = 'bray')
+
+asv_permanova <- adonis2(asv_bray ~ month, 
+                         data = metadata %>% filter(asv_sample %in% rownames(asv_data)))
+asv_permanova
+
+asv_phylo <- phyloseq(sample_data(metadata %>% filter(asv_sample %in% rownames(asv_data)) %>% 
+                                    column_to_rownames(var = 'asv_sample')),
+                      otu_table(asv_data, taxa_are_rows = FALSE))
+
+asv_ord <- ordinate(asv_phylo, method = "MDS", distance = "bray")
+
+asv_pcoa_plot <- plot_ordination(asv_phylo, asv_ord, justDF = TRUE) %>% 
+  ggplot(aes(x = Axis.1,
+             y = Axis.2)) +
+  geom_point(aes(fill = month),
+             size = 1,
+             shape = 21) +
+  # ggforce::geom_mark_ellipse(aes(color = stage),
+  #                            show.legend = FALSE) +
+  annotate('label',label = str_c('PERMANOVA\nMonth p-value = ', asv_permanova$`Pr(>F)`[1],
+                                 '\nMonth R2 = ', round(asv_permanova$R2[1], 2)),
+           x = 0.4,
+           y = 0.2,
+           size = 1,
+           hjust = 1) +
+  scale_fill_manual(values = month_color) +
+  labs(title = 'PCoA Ordination - ASV',
+       x = paste0('Axis.1 [', round(asv_ord$values$Relative_eig[1] * 100, 1), '%]'),
+       y = paste0('Axis.2 [', round(asv_ord$values$Relative_eig[2] * 100, 1), '%]'),
+       fill = 'Month') +
+  scale_x_continuous(limits = c(-0.4, 0.4)) +
+  scale_y_continuous(limits = c(-0.3, 0.3)) +
+  custom_theme +
+  theme(legend.key.spacing.y = unit(.01, 'lines'),
+        legend.key.spacing.x = unit(.01, 'lines'),
+        legend.key.size = unit(.3, 'lines'),
+        legend.title.position = 'top',
+        legend.box.spacing = unit(0, 'lines'))
+
+asv_pcoa_plot
+```
+
+# Alpha diversity
+
+```{r}
+asv_alpha <- phyloseq::otu_table(asv_data, taxa_are_rows = FALSE) %>% 
+  phyloseq::estimate_richness(.) %>% 
+  select(Observed, Chao1, ACE) %>% 
+  rownames_to_column(var = 'sample') %>% 
+  pivot_longer(c(Observed, Chao1, ACE), names_to = 'idx', values_to = 'value')  %>% 
+  mutate(sample = str_replace(sample, '\\.', '-'),
+         dataset = 'ASV')
+
+asv_alpha_plot <- asv_alpha %>% 
+  inner_join(metadata, by = c('sample' = 'asv_sample')) %>% 
+  mutate(idx = factor(idx, levels = c('Observed', 'Shannon', 'Chao1', 'ACE')),
+         idx = fct_recode(idx, `Observed richness` = 'Observed', `Chao1 index` = 'Chao1'), 
+         dataset = factor(dataset, levels = c('ASV', 'SingleM', 'FTICR'))) %>% 
+  filter(idx != 'ACE') %>% 
+  ggplot() +
+  geom_boxplot(aes(x = month,
+                   y = value),
+               fill = 'skyblue3',
+               linewidth = 0.2) +
+  facet_grid2(rows = vars(idx),
+              scales = 'free',
+              independent = 'y',
+              switch = 'y') +
+  custom_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title = element_blank(), 
+        legend.position = 'none',
+        strip.background = element_blank(),
+        strip.placement = 'outer')
+
+asv_alpha_plot
+```
+
+# Analysis of biochemical indexes
+
+## Van Krevelen diagrams
+
+```{r}
+classification <- tribble(
+  ~Class, ~OC_low, ~OC_high, ~HC_low, ~HC_high,
+  'Lipid', 0, 0.3, 1.5, 2.5,
+  'Unsat. HC', 0, 0.125, 0.8, 1.5,
+  'Cond. HC', 0, 0.95, 0.2, 0.8,
+  'Protein', 0.3, 0.55, 1.5, 2.3,
+  'Amino sugar', 0.55, 0.7, 1.5, 2.2,
+  'Carbohydrate', 0.7, 1.5, 1.5, 2.5,
+  'Lignin', 0.125, 0.65, 0.8, 1.5,
+  'Tannin', 0.65, 1.1, 0.8, 1.5, 
+) %>% 
+  mutate(label_x = (OC_low + OC_high) / 2,
+         label_y = ifelse(Class %in% c('Lipid', 'Protein', 'Amino sugar',
+                                       'Carbohydrate'), HC_high +.1, HC_high - .1))
+
+fticr_df <-  decostand(fticr_pos, method = 'total') %>% 
+  rownames_to_column(var = 'sample') %>% 
+  pivot_longer(!sample, names_to = 'Mass', values_to = 'intensity') %>% 
+  filter(sample %in% metadata$asv_sample) %>% 
+  mutate(Mass = as.numeric(Mass)) %>% 
+  filter(intensity > 0) %>% 
+  inner_join(fticr_annot_pos, by = 'Mass') %>% 
+  inner_join(metadata, by = c('sample' = 'asv_sample'))
+
+fticr_vk <- fticr_df %>% 
+  arrange(intensity) %>% 
+  ggplot(aes(x = OC,
+             y = HC)) +
+  geom_point(aes(fill = intensity,
+                 size = intensity),
+             shape = 21,
+             stroke = .001,
+             color = 'white') +
+  labs(x = 'O:C',
+       y = 'H:C',
+       fill = 'Relative abundance') +
+  geom_rect(data = classification,
+            aes(xmin = OC_low,
+                xmax = OC_high,
+                ymin = HC_low,
+                ymax = HC_high),
+            color = 'blue',
+            fill = NA,
+            linewidth = .2,
+            inherit.aes = FALSE, 
+            linetype = 'dashed') +
+  geom_label(data = classification,
+             aes(x = label_x,
+                 y = label_y,
+                 label = Class),
+             inherit.aes = FALSE,
+             size = 2,
+             alpha = 0.5) +
+  #scale_fill_manual(values = get_palette('Set2', 8)) +
+  scale_fill_viridis_c(option = 'A', direction = -1, trans = scales::transform_log10(),
+                       labels = scales::percent) +
+  scale_size_continuous(range = c(0.2, 2)) +
+  facet_wrap(~month) +
+  guides(size = 'none') +
+  custom_theme +
+  theme(plot.title = element_text(size = 7),
+        axis.text = element_text(size = 5),
+        axis.title = element_text(size = 5),
+        legend.text = element_text(size = 5),
+        legend.title = element_text(size = 5),
+        strip.text = element_text(size = 5),
+        strip.background = element_blank(),
+        legend.key.width  = unit(1, 'lines'),
+        legend.spacing = unit(0, 'lines'),
+        legend.position = 'bottom',
+        legend.box.spacing = unit(0, 'lines'))
+
+fticr_vk
+```
+
+## Indexes
+
+```{r}
+fticr_nosc <- fticr_df %>% 
+  ggplot() +
+  geom_violin(aes(x = month,
+                  y = NOSC,
+                  fill = stage),
+              linewidth = 0.2,
+              alpha = 0.5) +
+  geom_boxplot(aes(x = month,
+                   y = NOSC,
+                   fill = stage),
+               linewidth = 0.2,
+               outlier.size = .1,
+               width = .2,
+               show.legend = FALSE) +
+  scale_fill_manual(values = stage_color) +
+  labs(fill = 'Stage') +
+  custom_theme +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.box.spacing = unit(0, 'lines'))
+
+fticr_nosc
+```
+
+# Transformations
+
+```{r}
+fticr_transf <- load_fticr_transformations() 
+
+n_transf <- fticr_transf %>% 
+  filter(str_detect(Formula, '"N|ine|phan|urea|biotinyl|co-enzyme|uracil|amin|adenyl|Aspart"'),
+         !str_detect(Formula, 'N/A|glucose-N-|Na_|NA_')) %>% 
+  group_by(sample, month, stage) %>% 
+  summarise(total = sum(Perc_Counts)) %>% 
+  mutate(type = 'N transf.')
+
+s_transf <- fticr_transf %>% 
+  filter(str_detect(Formula, 'S|Cysteine|Cystine|glutathi|Methionine|co-enzyme|biotinyl|sulfate'),
+         !str_detect(Formula, 'Serine')) %>% 
+  group_by(sample, month, stage) %>% 
+  summarise(total = sum(Perc_Counts)) %>% 
+  mutate(type = 'S transf.')
+
+
+transf_plot <- rbind(n_transf, s_transf) %>% 
+  ggplot() +
+  geom_point(aes(x = month,
+                 y = total,
+                 fill = type),
+             size = 1,
+             shape = 21,
+             position = position_dodge()) +
+  scale_fill_manual(values = c('orange', 'blue3')) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = 'Transformations') +
+  custom_theme +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.placement = 'outer',
+        legend.title = element_blank())
+
+transf_plot
+```
+
+# Extra data
+
+```{r}
+singlem <- read_tsv('data/other_datasets/combined_otu_table.tsv')
+metadata_add_reads <- read_csv('data/other_datasets/other_datasets.csv', 
+                               col_names = c('sample', 'Habitat'))
+
+singlem_rplP <- singlem %>% 
+  filter(gene == 'S3.4.ribosomal_protein_L16_L10E_rplP',
+         !str_detect(taxonomy, 'Eukaryota'))
+
+singlem_id <- singlem_rplP %>% 
+  select(sequence) %>% 
+  distinct() %>% 
+  mutate(otu_id = paste0('singlem_rplP_OTU_', str_pad(n():1, 6, pad = '0')))
+
+singlem_rplP_id <- singlem_rplP %>% 
+  inner_join(singlem_id) %>% 
+  select(otu_id, everything())
+
+singlem_mat <- singlem_rplP_id %>% 
+  filter(!str_detect(sample, 'S0'))  %>% 
+  mutate(sample = str_remove(sample, '_L.*')) %>% 
+  mutate(sample = str_remove(sample, '_S.*')) %>% 
+  select(otu_id, sample, value = num_hits, sequence) %>% 
+  group_by(otu_id, sample) %>% 
+  summarise(value = sum(value)) %>% 
+  ungroup()
+
+singlem_profiles <- read_tsv('data/other_datasets/combined_profile.tsv') %>% 
+  filter(!str_detect(sample, 'S0'))  %>% 
+  mutate(sample = str_remove(sample, '_L.*'),
+         sample = str_remove(sample, '_S.*')) %>% 
+  group_by(sample, taxonomy) %>%
+  summarise(coverage = sum(coverage)) %>%
+  separate(taxonomy, 
+           into = c('Root', 'Domain', 'Phylum', 'Class', 'Order', 
+                    'Family', 'Genus', 'Species'),
+           sep = '; ') %>% 
+  filter(!is.na(Phylum),
+         Domain != 'd__Eukaryota') %>% 
+  mutate(across(Domain:Species, ~str_remove(.x, '.__')))
+
+singlem_profiles_ready <- singlem_profiles %>% 
+  left_join(metadata_add_reads, by = 'sample') %>% 
+  mutate(Habitat = ifelse(is.na(Habitat), 'Sonoran Desert (Tfaily)', Habitat)) %>% 
+  ungroup() %>% 
+  mutate(Phylum_lump = fct_lump_n(Phylum, 10, w = coverage)) %>% 
+  group_by(sample) %>% 
+  mutate(r_abundance = coverage / sum (coverage)) %>% 
+  group_by(sample, Phylum_lump, Habitat) %>% 
+  summarise(r_abundance = sum(r_abundance))
+
+singlem_tax <- singlem_profiles_ready %>% 
+  mutate(Habitat = str_replace(Habitat, ' ', '\n')) %>% 
+  ggplot(aes(x = sample,
+             y = r_abundance,
+             fill = Phylum_lump)) +
+  geom_col(color = 'black',
+           linewidth = .01) +
+  scale_fill_manual(values = ggpubr::get_palette('Paired', 11)) +
+  scale_y_continuous(labels = scales::percent, expand = c(0, 0.008)) +
+  facet_grid(cols = vars(Habitat),
+             space = 'free',
+             scales = 'free') +
+  guides(fill = guide_legend(nrow = 2)) +
+  labs(y = 'Relative abundance',
+       fill = 'Phylum') +
+  theme_bw() +
+  custom_theme +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.key.spacing.y = unit(.01, 'lines'),
+        legend.key.spacing.x = unit(.01, 'lines'),
+        legend.key.size = unit(.3, 'lines'),
+        axis.ticks.x = element_blank(),
+        strip.background = element_blank(),
+        legend.position = 'bottom',
+  )
+
+singlem_tax
+```
+
+# Compositional stability
+
+```{r}
+# Creating list of sample comparisons (every two timepoints)
+
+metadata_singlem <- metadata %>% 
+  filter(asv_sample %in% rownames(singlem_rplP))
+
+comp_list <- metadata_singlem %>% 
+  select(asv_sample, month) %>% 
+  mutate(site = str_extract(asv_sample, 'S[0-9]')) %>% 
+  pivot_wider(names_from = site, values_from = asv_sample) %>% 
+  select(-month) %>% 
+  map(., function(col){
+    list(start = col[1:6],
+         end = col[2:7])
+  })
+
+singlem_mat <- decostand(singlem_rarefied[metadata_singlem$asv_sample,],
+                         method = 'total',
+                         MARGIN = 1)
+
+stability_values_singlem <- imap(comp_list, function(ll, site){
+  
+  site_res <- map2(ll$start, ll$end, function(start, end){
+    
+    sub_singlem <- singlem_mat[c(start, end),]
+    
+    comp_stab_singlem <- (sum(2*apply(sub_singlem, 2, min))/ sum(sub_singlem)) ^ 0.5
+    
+    res <- data.frame(dataset = 'SingleM',
+                      comp_stability = comp_stab_singlem)
+    
+  }) %>% reduce(rbind) %>% 
+    mutate(comparison = c('May vs July_1',
+                          'July_1 vs July_2',
+                          'July_2 vs July_3',
+                          'July_3 vs August',
+                          'August vs October',
+                          'October vs May_22'),
+           comparison = factor(comparison, levels = c('May vs June',
+                                                      'May vs July_1',
+                                                      'June vs July_1',
+                                                      'July_1 vs July_2',
+                                                      'July_2 vs July_3',
+                                                      'July_3 vs August',
+                                                      'August vs September',
+                                                      'August vs October',
+                                                      'September vs October',
+                                                      'October vs May_22')))
+  
+  
+}) %>% reduce(rbind)
+
+comp_list_asv <- metadata %>% 
+  filter(asv_sample %in% rownames(asv_data)) %>% 
+  select(asv_sample, month) %>% 
+  mutate(site = str_extract(asv_sample, 'S[0-9]')) %>% 
+  pivot_wider(names_from = site, values_from = asv_sample) %>% 
+  select(-month) %>% 
+  map(., function(col){
+    list(start = col[1:7],
+         end = col[2:8])
+  })
+
+asv_mat <- decostand(asv_data,
+                     method = 'total',
+                     MARGIN = 1)
+
+stability_values_asv <- imap(comp_list_asv, function(ll, site){
+  
+  site_res <- map2(ll$start, ll$end, function(start, end){
+    
+    sub_asv <- asv_mat[c(start, end),]
+    
+    comp_stab_asv <- (sum(2*apply(sub_asv, 2, min))/ sum(sub_asv)) ^ 0.5
+    
+    res <- data.frame(dataset = 'ASV',
+                      comp_stability = comp_stab_asv)
+    
+  }) %>% reduce(rbind) %>% 
+    mutate(comparison = c('May vs June',
+                          'June vs July_1',
+                          'July_1 vs July_2',
+                          'July_2 vs July_3',
+                          'July_3 vs August',
+                          'August vs September',
+                          'September vs October'),
+           comparison = factor(comparison, levels = c('May vs June',
+                                                      'May vs July_1',
+                                                      'June vs July_1',
+                                                      'July_1 vs July_2',
+                                                      'July_2 vs July_3',
+                                                      'July_3 vs August',
+                                                      'August vs September',
+                                                      'August vs October',
+                                                      'September vs October',
+                                                      'October vs May_22')))
+  
+  
+}) %>% reduce(rbind)
+
+
+stability_plot <- rbind(stability_values_singlem,
+                        stability_values_asv) %>% 
+  mutate(ord = c(rep(1:6, 4), rep(1:7, 4))) %>% 
+  ggplot(aes(x = comparison,
+             y = comp_stability,
+             color = dataset)) +
+  geom_point(show.legend = FALSE,
+             size = .8) +
+  geom_smooth(aes(x = ord),
+              method = 'lm',
+              show.legend = FALSE,
+              linewidth = .3) +
+  facet_grid(cols = vars(dataset),
+             scales = 'free',
+             space = 'free') +
+  labs(y = 'Compositional stability index') +
+  scale_y_continuous(limits = c(0, 1)) +
+  # scale_x_continuous(breaks = scales::pretty_breaks(6)) +
+  custom_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.background = element_blank(),
+        panel.grid = element_blank(),
+        axis.title.x = element_blank())
+
+stability_plot
+```
+
+
+
+# Extended Figure 2
+
+```{r}
+layout_ext <- "
+ABC
+DEF
+GGG
+HHH
+"
+
+ext_fig2 <- asv_tax_plot + asv_pcoa_plot + free(asv_alpha_plot) +
+  fticr_class_pos_plot + fticr_nosc + transf_plot + 
+  free(singlem_tax) + free(stability_plot) +
+  plot_layout(design = layout_ext,
+              heights = c(1,1,1.5,1.5)) +
+  plot_annotation(tag_levels = 'A') &
+  theme(plot.margin = unit(c(0.1,0.1,0.1,0.1), 'lines'))
+
+ext_fig2
+
+ggsave('output_figures/Supplementary_Figure_2.svg', ext_fig2, dpi = 300,
+       width = 180, height = 185, units = 'mm')
+ggsave('output_figures/Supplementary_Figure_2.png', ext_fig2, dpi = 300,
+       width = 180, height = 185, units = 'mm')
+
+
+ggsave('output_figures/Supplementary_Figure_3.svg', fticr_vk, dpi = 300,
+       width = 180, height = 150, units = 'mm')
+ggsave('output_figures/Supplementary_Figure_3.png', fticr_vk, dpi = 300,
+       width = 180, height = 150, units = 'mm')
+```
+
+
+
+
+
+
+
+
+

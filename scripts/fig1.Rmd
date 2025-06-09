@@ -69,12 +69,15 @@ all_vars <- ndvi %>%
 
 stages <- tribble(
   ~Stage, ~start, ~end,
-  'Pre monsoon', ymd(20210506), ymd(20210630),
+  'Pre monsoon', ymd(20210505), ymd(20210630),
   'During monsoon', ymd(20210701), ymd(20210831),
-  'Post monsoon', ymd(20210901), ymd(20211018),
+  'Post monsoon', ymd(20210901), ymd(20211019),
   'Pre monsoon', ymd(20220524), ymd(20220529)
 ) %>% 
-  mutate(year = year(start))
+  mutate(year = year(start),
+         Stage = factor(Stage, levels = c('Pre monsoon',
+                                          'During monsoon',
+                                          'Post monsoon')))
 
 sampling <- tribble(
   ~sampling, ~date, ~stage,
@@ -135,10 +138,17 @@ temp_plot <- temp_vars %>%
                 color = variable),
             linewidth = .2) +
   scale_color_manual(values = c('red2', 'purple')) +
-  scale_x_date(breaks = seq(from = ymd(20210506), 
-                            to = ymd(20220528), by = '16 day'), 
+  scale_x_date(breaks = c(ymd(20210506),
+                          ymd(20210615),
+                          ymd(20210705),
+                          ymd(20210715),
+                          ymd(20210727),
+                          ymd(20210815),
+                          ymd(20210915),
+                          ymd(20211018),
+                          ymd(20220528)), 
                date_labels = '%b %d, %Y',
-               expand = c(0, 0)) +
+               expand = c(0, 2)) +
   facet_grid(cols = vars(year),
              scales = 'free',
              space = 'free') +
@@ -147,7 +157,8 @@ temp_plot <- temp_vars %>%
   theme(axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         legend.title = element_blank(),
-        strip.text = element_blank())
+        strip.text = element_blank(),
+        plot.margin = unit(c(0,0,0,0), 'lines'))
 
 temp_plot
 ```
@@ -173,8 +184,7 @@ metal_plot <- metal_vars %>%
                 ymin = -Inf,
                 ymax = Inf,
                 fill = Stage),
-            alpha = 0.3,
-            show.legend = FALSE) +
+            alpha = 0.3) +
   scale_fill_manual(values = stage_color) +
   ggnewscale::new_scale_fill() +
   geom_point(aes(x = date, 
@@ -188,21 +198,33 @@ metal_plot <- metal_vars %>%
               se = FALSE,
               linewidth = .2) +
   scale_color_manual(values = get_palette('Dark2', 10)) +
-  scale_x_date(breaks = seq(from = ymd(20210506), 
-                            to = ymd(20220528), by = '16 day'), 
+  scale_x_date(breaks = c(ymd(20210506),
+                          ymd(20210615),
+                          ymd(20210705),
+                          ymd(20210715),
+                          ymd(20210727),
+                          ymd(20210815),
+                          ymd(20210915),
+                          ymd(20211018),
+                          ymd(20220528)),
                date_labels = '%b %d, %Y',
-               expand = c(0, 0)) +
-  labs(y = 'Concentration\n[ug/g]') +
+               expand = c(0, 2)) +
+  labs(y = 'Concentration\n[ug/g]',
+       color = '',
+       fill = 'Stage') +
   facet_grid(rows = vars(sep),
              cols = vars(year),
              scales = 'free',
              space = 'free_x') +
+  guides(color = guide_legend(order = 1),
+         fill = guide_legend(order = 2)) +
   custom_theme +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         axis.title.x = element_blank(),
-        legend.title = element_blank(),
+        legend.title = element_text(size = 7.5),
         strip.background = element_blank(),
-        strip.text = element_blank())
+        strip.text = element_blank(),
+        plot.margin = unit(c(0,0,0,0), 'lines'))
 
 
 metal_plot
@@ -243,10 +265,17 @@ cn_plot <- cn_vars %>%
               se = FALSE,
               linewidth = .2) +
   scale_color_manual(values = get_palette('Set1', 2)) +
-  scale_x_date(breaks = seq(from = ymd(20210506), 
-                            to = ymd(20220528), by = '16 day'), 
+  scale_x_date(breaks = c(ymd(20210506),
+                          ymd(20210615),
+                          ymd(20210705),
+                          ymd(20210715),
+                          ymd(20210727),
+                          ymd(20210815),
+                          ymd(20210915),
+                          ymd(20211018),
+                          ymd(20220528)),
                date_labels = '%b %d, %Y',
-               expand = c(0, 0)) +
+               expand = c(0, 2)) +
   labs(y = 'Concentration\n[%wt]') +
   facet_grid(rows = vars(sep),
              cols = vars(year),
@@ -257,7 +286,8 @@ cn_plot <- cn_vars %>%
         axis.title.x = element_blank(),
         legend.title = element_blank(),
         strip.background = element_blank(),
-        strip.text = element_blank())
+        strip.text = element_blank(),
+        plot.margin = unit(c(0,0,0,0), 'lines'))
 
 
 cn_plot
@@ -296,10 +326,17 @@ ph_plot <- ph_vars %>%
               se = FALSE,
               linewidth = .2) +
   scale_color_manual(values = 'black') +
-  scale_x_date(breaks = seq(from = ymd(20210506), 
-                            to = ymd(20220528), by = '16 day'), 
+  scale_x_date(breaks = c(ymd(20210506),
+                          ymd(20210615),
+                          ymd(20210705),
+                          ymd(20210715),
+                          ymd(20210727),
+                          ymd(20210815),
+                          ymd(20210915),
+                          ymd(20211018),
+                          ymd(20220528)),
                date_labels = '%b %d, %Y',
-               expand = c(0, 0)) +
+               expand = c(0, 2)) +
   facet_grid(cols = vars(year),
              scales = 'free',
              space = 'free_x') +
@@ -309,7 +346,8 @@ ph_plot <- ph_vars %>%
         axis.title.x = element_blank(),
         legend.title = element_blank(),
         strip.background = element_blank(),
-        strip.text = element_blank())
+        strip.text = element_blank(),
+        plot.margin = unit(c(0,0,0,0), 'lines'))
 
 
 ph_plot
@@ -348,20 +386,29 @@ moist_plot <- moist_vars %>%
               se = FALSE,
               linewidth = .2) +
   scale_color_manual(values = 'steelblue') +
-  scale_x_date(breaks = seq(from = ymd(20210506), 
-                            to = ymd(20220528), by = '16 day'), 
+  scale_x_date(breaks = c(ymd(20210506),
+                          ymd(20210615),
+                          ymd(20210705),
+                          ymd(20210715),
+                          ymd(20210727),
+                          ymd(20210815),
+                          ymd(20210915),
+                          ymd(20211018),
+                          ymd(20220528)),
                date_labels = '%b %d, %Y',
-               expand = c(0, 0)) +
-  facet_grid(cols = vars(year),
-             space = 'free_x',
-             scales = 'free') +
-  labs(y = 'Moisture') +
+               expand = c(0, 2)) +
+  facet_grid2(cols = vars(year),
+              space = 'free_x',
+              scales = 'free',
+              strip = strip_vanilla(clip = 'off')) +
+  labs(y = 'Moisture\n[%]') +
   custom_theme +
   theme(axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         legend.title = element_blank(),
         strip.background = element_blank(),
-        strip.text = element_blank())
+        strip.text = element_blank(),
+        plot.margin = unit(c(0,0,0,0), 'lines'))
 
 moist_plot
 ```
@@ -400,21 +447,30 @@ prec_plot <- prec_vars %>%
                 color = variable),
             linewidth = .2) +
   scale_color_manual(values = 'steelblue') +
-  scale_x_date(breaks = seq(from = ymd(20210506), 
-                            to = ymd(20220528), by = '16 day'), 
+  scale_x_date(breaks = c(ymd(20210506),
+                          ymd(20210615),
+                          ymd(20210705),
+                          ymd(20210715),
+                          ymd(20210727),
+                          ymd(20210815),
+                          ymd(20210915),
+                          ymd(20211018),
+                          ymd(20220528)),
                date_labels = '%b %d, %Y',
-               expand = c(0, 0)) +
+               expand = c(0, 2)) +
   labs(y = 'Precipitation\n[mm]') +
   facet_grid2(cols = vars(year),
-             space = 'free_x',
-             scales = 'free',
-             strip = strip_vanilla(clip = 'off')) +
+              space = 'free_x',
+              scales = 'free',
+              strip = strip_vanilla(clip = 'off')) +
   custom_theme +
   theme(axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         legend.title = element_blank(),
         strip.background = element_blank(),
-        strip.text.y = element_blank())
+        strip.text.y = element_blank(),
+        strip.text.x = element_text(size = 8),
+        plot.margin = unit(c(0,0,0,0), 'lines'))
 
 prec_plot
 ```
@@ -453,10 +509,17 @@ ndvi_plot <- ndvi_vars %>%
                 color = variable),
             linewidth = .2) +
   scale_color_manual(values = 'forestgreen') +
-  scale_x_date(breaks = seq(from = ymd(20210506), 
-                            to = ymd(20220528), by = '16 day'),
+  scale_x_date(breaks = c(ymd(20210506),
+                          ymd(20210615),
+                          ymd(20210705),
+                          ymd(20210715),
+                          ymd(20210727),
+                          ymd(20210815),
+                          ymd(20210915),
+                          ymd(20211018),
+                          ymd(20220528)),
                date_labels = '%b %d, %Y',
-               expand = c(0, 0)) +
+               expand = c(0, 2)) +
   facet_grid(cols = vars(year),
              scales = 'free',
              space = 'free_x') +
@@ -466,7 +529,8 @@ ndvi_plot <- ndvi_vars %>%
         axis.title.x = element_blank(),
         legend.title = element_blank(),
         strip.background = element_blank(),
-        strip.text = element_blank())
+        strip.text = element_blank(),
+        plot.margin = unit(c(0,0,0,0), 'lines'))
 
 
 ndvi_plot
@@ -480,12 +544,13 @@ final <- prec_plot + temp_plot + ndvi_plot + moist_plot + ph_plot +
   plot_layout(ncol = 1,
               heights = c(1, 1, 1, 1, 1, 2, 3.5)) &
   theme(axis.title = element_text(size = 7),
-        axis.text = element_text(size = 7),
+        axis.text = element_text(size = 6.5),
         legend.text = element_text(size = 7),
         legend.justification.right = "left")
 
 final
 ```
+
 
 # 3. PCA environmental data
 
@@ -516,15 +581,21 @@ pca_plot <- pca_scores %>%
              y = Comp.2)) +
   geom_point(aes(fill = month),
              shape = 21,
-             size = 2) +
-  stat_ellipse(aes(color = stage),
-               show.legend = FALSE) +
+             size = 1.7) +
+  stat_ellipse(aes(color = stage)) +
+  labs(fill = 'Month',
+       color = 'Stage') +
   scale_fill_manual(values = month_color) +
   scale_color_manual(values = stage_color) +
   labs(title = 'PCA - Envs. variables',
        x = pc1,
        y = pc2) +
-  custom_theme 
+  custom_theme +
+  theme(legend.title = element_text(size = 7.5),
+        legend.text = element_text(size = 7),
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6.5),
+        plot.title = element_text(size = 7.5))
 
 pca_plot
 ```
@@ -545,7 +616,7 @@ fig1 <- wrap_elements() + wrap_elements() + final + free(pca_plot) +
 
 fig1
 
-ggsave('output_figures/incomplete_figure1.svg', fig1, dpi = 300,
+ggsave('updated_figures/incomplete_figure1.svg', fig1, dpi = 300,
        width = 180, height = 185, units = 'mm')
 ```
 

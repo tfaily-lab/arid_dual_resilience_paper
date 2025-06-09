@@ -9,7 +9,13 @@ data/preprocessed_data/ASV_matrix_rarefied.csv
 data/mash_distances/*
 data/definitions/expression_per_sample_cnps_10-31_fixed.csv
 data/definitions/expression_per_sample_traits_10-31.csv
+data/other_datasets/*
+data/expression_Thermo*
+data/networks/*
+updated_figures/
+updated_tables/
 output_tables/Supplementary*
+output_figures_old/*
 docs/
 *.png
 

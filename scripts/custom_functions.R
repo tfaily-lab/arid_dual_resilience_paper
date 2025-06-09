@@ -144,7 +144,7 @@ load_singlem_data <- function(which,
   singlem_filt <- singlem[, colSums(singlem >= prev_min_counts) >= prev_min_samples]
   
   if(normalize_sum){
-    singlem <- decostand(singlem, method = 'total')
+    singlem_filt <- decostand(singlem_filt, method = 'total')
   }
   
   return(singlem_filt)

@@ -1,5 +1,5 @@
 ---
-title: "Extended Fig. 5"
+title: "Supp_fig4"
 author: "Christian Ayala Ortiz"
 date: "`r Sys.Date()`"
 output: html_document
@@ -7,88 +7,104 @@ output: html_document
 
 # Load libraries
 
-```{r}
+```{r setup, include=FALSE}
+library(ggpubr)
 library(tidyverse)
-library(ggh4x)
+library(patchwork)
+
 source('scripts/custom_functions.R')
 ```
 
-# Load data 
+# Load data
 
 ```{r}
-traits_exp <- read_csv('data/definitions/expression_per_sample_traits_10-31.csv')
-traits_def <- read_csv('data/definitions/traits_definitions_update_10_9.csv')
-metadata <- load_metadata()
 mag_taxonomy <- load_mag_taxonomy()
+
+metadata <- load_metadata()
+
+mag_abundances <- load_mag_abundance(prev_min_samples = 0) %>% 
+  decostand(method = 'tota', MARGIN = 1) %>% 
+  rownames_to_column(var = 'asv_sample') %>% 
+  pivot_longer(!asv_sample, names_to = 'bin', values_to = 'abundance') %>% 
+  left_join(metadata) %>% 
+  left_join(mag_taxonomy) %>% 
+  group_by(month, asv_sample, Phylum) %>% 
+  summarise(abundance = sum(abundance))
+
+
+metaT_abundances <- read_csv('data/metaT/geTMM_normalized_matrix_2024.csv') %>% 
+  rename_with(~str_remove(.x, '/xdisk.*results/')) %>% 
+  pivot_longer(!Geneid, names_to = 'sample', values_to = 'tmm') %>% 
+  mutate(sample = str_replace(sample, 'RNA', 'DNA'),
+         bin = str_remove(Geneid, '_k.*')) %>% 
+  left_join(metadata) %>% 
+  left_join(mag_taxonomy)  %>% 
+  group_by(month, asv_sample, Phylum) %>% 
+  summarise(tmm = sum(tmm)) %>% 
+  group_by(month, asv_sample) %>% 
+  mutate(tmm_perc = tmm / sum(tmm))
 ```
 
-# Data wrangling
+
+# Plotting
 
 ```{r}
-traits_df <- traits_exp %>% 
-  mutate(SampleID = str_replace(SampleID, 'RNA', 'DNA')) %>% 
-  inner_join(metadata, by = c('SampleID' = 'sample')) %>% 
-  group_by(bin, month, module_id) %>% 
-  summarise(mean_expr = mean(expression)) %>% 
-  inner_join(traits_def, by = c('module_id' = 'def_id')) %>% 
-  filter(!(Category_1 %in% c('Low temperature stress', 'Transcription regulation',
-                             'Oxygen limitation', 'pH stress'))) %>% 
-  filter(mean_expr > 0) %>% 
-  inner_join(mag_taxonomy, by = 'bin') %>% 
-  group_by(month, Name, Category_1, Phylum) %>% 
-  summarise(mean_expr = mean(mean_expr)) %>% 
-  group_by(Phylum, Name, Category_1) %>% 
-  mutate(zscore = (mean_expr - mean(mean_expr)) / sd(mean_expr))
-  
-
-strip_custom <- strip_nested(text_x = element_text(angle = 90),
-                             size = 'variable',
-                             clip = 'off')
-
-traits_plot1 <- traits_df %>%
-  mutate(Name = str_replace_all(Name, '_', ' '),
-         Name = str_replace(Name, 'degradation', 'degrad.'),
-         Name = str_replace(Name, 'production', 'prod.'),
-         Name = str_replace(Name, 'cyclopropane-fatty-acyl-phospholipid synthase', 'CFA synthase'),
-         Name = str_replace(Name, 'lipopolysaccharide', 'LPS'),
-         Name = str_replace(Name, 'polysaccharide', 'PS'),
-         Name = str_replace(Name, 'Enterobacterial common antigen \\(ECA\\)', 'ECA'),
-         Name = str_replace(Name, 'mannosylglucosylglycerate', 'MGG'),
-         Name = str_replace(Name, 'choline\\/glycine\\/proline', 'Cho\\/Gly\\/Pro'),
-         Name = str_replace(Name, 'glycine betaine', 'GB'),
-         Name = str_replace(Name, 'biosynthesis', 'biosynth.'),
-         Name = str_replace(Name, 'AhpCF, alkyl hidroxiperoxide reductase', 'AhpCF'),
-         Name = str_replace(Name, 'two component system|two-component system', 'two comp. system')) %>% 
+mag_abundance_plot <- mag_abundances %>% 
   ggplot() +
-  geom_tile(aes(y = Name,
-                x = month,
-                fill = zscore),
-            color = 'white',
-            linewidth = 0.02) +
-  facet_grid2(rows = vars(Category_1),
-              cols = vars(Phylum),
-              scales = 'free_y',
-              space = 'free_y',
-              switch = 'y',
-              strip = strip_custom,
-              labeller = label_wrap_gen(width=10)) +
-  scale_fill_distiller(palette = 'RdBu', direction = -1) +
+  geom_col(aes(x = asv_sample,
+               y = abundance,
+               fill = Phylum),
+           color = 'black',
+           linewidth = .1) +
+  scale_fill_manual(values = get_palette('Paired', 18)) +
+  scale_y_continuous(labels = scales::percent) +
+  facet_grid(cols = vars(month),
+             scales = 'free',
+             space = 'free') +
+  labs(y = 'Relative abundance\n(metagenomic reads)') +
+  theme_bw() +
   custom_theme +
-  theme(
-    # axis.text.y = element_blank(),
-    #     axis.ticks.y = element_blank(),
-        axis.title = element_blank(),
-        strip.text.y.left = element_text(angle = 0),
+  theme(panel.grid = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
-        axis.text = element_text(size = 4.5),
-        strip.placement = 'outer',
-        legend.position = 'bottom')
+        axis.title.x = element_blank())
+
+mag_abundance_plot
 
 
-traits_plot1
+metaT_abundance_plot <- metaT_abundances %>% 
+  ggplot() +
+  geom_col(aes(x = asv_sample,
+               y = tmm_perc,
+               fill = Phylum),
+           color = 'black', linewidth = 0.1) +
+  scale_fill_manual(values = get_palette('Paired', 18)) +
+  scale_y_continuous(labels = scales::percent) +
+  facet_grid(cols = vars(month),
+             scales = 'free',
+             space = 'free') +
+  labs(y = 'Relative abundance\n(metatranscriptomics reads)') +
+  theme_bw() +
+  custom_theme +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank())
 
-ggsave('output_figures/Ext_figure_5.svg', traits_plot1, dpi = 300, 
-       height = 185, width = 180, units = 'mm')
+metaT_abundance_plot
+```
+
+# Final plot
+
+```{r}
+supp_fig5 <- mag_abundance_plot + metaT_abundance_plot +
+  plot_layout(guides = 'collect', ncol = 1) +
+  plot_annotation(tag_levels = 'A')
+
+# supp_fig4
+
+ggsave('output_figures/Supplementary_Figure_5.svg', supp_fig5, dpi = 300,
+       height = 120, width = 180, units = 'mm')
+ggsave('output_figures/Supplementary_Figure_5.png', supp_fig5, dpi = 300,
+       height = 120, width = 180, units = 'mm')
 ```
 
 

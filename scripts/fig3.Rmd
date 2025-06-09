@@ -1,0 +1,311 @@
+---
+title: "Figure 4"
+author: "Christian Ayala Ortiz"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# 1. Load libraries
+
+```{r}
+library(ggpubr)
+library(patchwork)
+library(treedataverse)
+library(tidyverse)
+library(ggh4x)
+source('scripts/custom_functions.R')
+```
+
+# 2. Load data
+
+```{r}
+checkm2 <- read_tsv('data/checkm2/filter_checkm2_quality_report.tsv') %>% 
+  mutate(bin_type =case_when(
+    Completeness >= 70 & Contamination <= 10 ~ 'High quality',
+    Completeness >= 50 & Contamination <= 10 ~ 'Medium quality',
+    TRUE ~ 'Low quality'
+  ))
+
+mag_taxonomy <- load_mag_taxonomy() %>% 
+  mutate(Phylum_lump = fct_lump_n(Phylum, 10)) %>% 
+  group_by(Phylum) %>% 
+  mutate(n = n()) %>% 
+  mutate(Phylum_n = str_c(Phylum, ' (', n, ')'))
+
+bac_tree <- read.tree('data/gtdb_res/gtdbtk.bac120.decorated.tree')
+ar_tree <- read.tree('data/gtdb_res/gtdbtk.ar53.decorated.tree')
+
+metadata <- load_metadata()
+
+mag_data <- load_mag_abundance(prev_min_counts = 0,
+                               prev_min_samples = 0) %>% 
+  rownames_to_column(var = 'sample') %>% 
+  pivot_longer(!sample, names_to = 'bin', values_to = 'ra') %>% 
+  inner_join(metadata, by = c('sample' = 'asv_sample')) %>% 
+  group_by(bin, month) %>% 
+  summarise(ra = mean(ra))
+
+modules <- read_csv('data/definitions/metaG_presence_10-31.csv') %>% 
+  filter(str_detect(m_id, 'TraitDef'))
+
+def_arid <- read_csv('data/definitions/traits_definitions_update_10_9.csv') %>% 
+  mutate(Name = str_replace_all(Name, '_', ' '),
+         Name = str_replace(Name, 'degradation', 'degrad.'),
+         Name = str_replace(Name, 'production', 'prod.'),
+         Name = str_replace(Name, 'cyclopropane-fatty-acyl-phospholipid synthase', 
+                            'CFA synthase'),
+         Name = str_replace(Name, 'lipopolysaccharide', 'LPS'),
+         Name = str_replace(Name, 'polysaccharide', 'PS'),
+         Name = str_replace(Name, 'Enterobacterial common antigen \\(ECA\\)', 
+                            'ECA'),
+         Name = str_replace(Name, 'mannosylglucosylglycerate', 
+                            'MGG'),
+         Name = str_replace(Name, 'choline\\/glycine\\/proline', 
+                            'Cho\\/Gly\\/Pro'))
+```
+
+# 3. Plotting tree
+
+```{r}
+tree_tips <- tip.label(bac_tree)
+drop_tips <- tree_tips[which(!str_detect(tree_tips, 'bin'))]
+
+mybac_tree <- drop.tip(bac_tree, drop_tips)
+
+ar_tree_tips <- tip.label(ar_tree)
+ar_drop_tips <- ar_tree_tips[which(!str_detect(ar_tree_tips, 'bin'))]
+
+myar_tree <- drop.tip(ar_tree, ar_drop_tips)
+
+phyla_colors <- set_names(get_palette('Paired', 18),
+                          nm =sort(unique(mag_taxonomy$Phylum)))
+
+phyla_colors[3] = 'blue'
+
+bactree_df <- as_tibble(mybac_tree) %>% 
+  left_join(mag_taxonomy, by = c('label' = 'bin')) %>%
+  as.treedata()
+
+artree_df <- as_tibble(myar_tree) %>% 
+  left_join(mag_taxonomy, by = c('label' = 'bin')) %>%
+  as.treedata()
+
+all_tree <- bind.tree(myar_tree, mybac_tree) %>% 
+  as_tibble() %>% 
+  left_join(mag_taxonomy, by = c('label' = 'bin')) %>%
+  as.treedata()
+
+gtdb_checkm <- checkm2 %>% 
+  select(Name, Completeness, Contamination, Genome_Size, GC_Content) %>% 
+  inner_join(mag_taxonomy, by = c('Name' = 'bin'))
+
+tree_annotated <- ggtree(all_tree, layout = 'fan', open.angle = 20) +
+  geom_tippoint(aes(fill = Phylum), size = 1.2, shape = 21) +
+  scale_fill_manual(values = phyla_colors) +
+  guides(fill = guide_legend(ncol = 3)) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(data = mag_data,
+             geom = geom_tile,
+             mapping = aes(y = bin,
+                           x = month,
+                           fill = ra +1),
+             offset = 0.05,
+             pwidth = 0.2) +
+  labs(fill = 'Abundance [TMM]') +
+  scale_fill_viridis_c(option = 'A', trans = scales::log10_trans(), direction = -1) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(data = gtdb_checkm,
+             geom = geom_col,
+             mapping = aes(y = Name,
+                           x = Completeness,
+                           fill = Completeness),
+             color = 'white',
+             offset = 0.05,
+             pwidth = 0.2) +
+  scale_fill_distiller(palette = 'PuBuGn', labels = ~scales::percent(.x, scale = 1),
+                       limits = c(50, 100), , direction = 1) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(data = gtdb_checkm,
+             geom = geom_col,
+             mapping = aes(y = Name,
+                           x = Contamination,
+                           fill = Contamination),
+             color = 'white',
+             offset = 0.05,
+             pwidth = 0.1) +
+  scale_fill_distiller(palette = 'Greys', 
+                       labels = ~scales::percent(.x, scale = 1), direction = 1,
+                       limits = c(0, 10)) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(data = gtdb_checkm,
+             geom = geom_col,
+             mapping = aes(y = Name,
+                           x = Genome_Size,
+                           fill = Genome_Size),
+             color = 'white',
+             offset = 0.05,
+             pwidth = 0.3) +
+  scale_fill_distiller(palette = 'Purples', direction = 1,
+                       labels = scales::unit_format(unit = "M", scale = 1e-6)) +
+  theme(legend.title = element_text(size = 7),
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(.3, 'lines'),
+        plot.title = element_text(face = 'bold', hjust = 0.5),
+        legend.direction = 'horizontal',
+        legend.position = 'bottom',
+        legend.key.width = unit(1, 'lines'),
+        legend.title.position = 'top',
+        legend.spacing = unit(.05, 'lines'),
+        legend.key.spacing.y = unit(.1, 'lines'),
+        legend.box.spacing = unit(0, 'lines'))
+
+tree_annotated
+```
+
+4. CUB and growth pred
+
+```{r}
+growth_pred <- read_csv('data/grodon/grodon_results.csv') %>% 
+  left_join(mag_taxonomy, by = 'bin') 
+
+growth_pred %>% 
+  mutate(quad = case_when(GC >= .6 & d > 5 ~ 'High GC, slow',
+                          GC >= .6 & d <= 5 ~ 'High GC, fast',
+                          GC < .6 & d > 5 ~ 'Low GC, slow',
+                          GC < .6 & d < 5 ~ 'Low GC, fast')) %>% 
+  inner_join(mag_taxonomy) %>% 
+  count(Phylum, quad) %>% 
+  ggplot() +
+  geom_col(aes(x = Phylum,
+               y = n,
+               fill = quad)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  rate_den <- growth_pred %>% 
+  ggplot() +
+  geom_density(aes(x = 1/d),
+               fill = 'gray70',
+               alpha = 0.5) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.margin = margin(0, 0, 0, 0))
+
+rate_den
+
+gc_den <- growth_pred %>% 
+  ggplot() +
+  geom_density(aes(y = GC),
+               fill = 'gray70',
+               alpha = 0.5) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.margin = margin(0, 0, 0, 0))
+
+gc_den
+
+gc_rate <- growth_pred %>% 
+  ggplot() +
+  geom_point(aes(x = 1/d,
+                 y = GC,
+                 fill = Phylum),
+             shape = 21,
+             size = 1.2,
+             alpha = 0.8) +
+  scale_fill_manual(values = phyla_colors) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = 'GC Content',
+       x = 'Maximum growth rate [1/h]') +
+  guides(fill = guide_legend(ncol = 2)) +
+  theme_bw() +
+  theme(legend.text = element_text(size = 6),
+        legend.title = element_text(size = 7),
+        legend.position = 'none') +
+  theme(text = element_text(size = 7))
+
+gc_rate
+```
+
+# 4. Traits heatmap
+
+```{r}
+traits <- modules %>% 
+  inner_join(def_arid, by = c('m_id' = 'def_id')) %>% 
+  inner_join(mag_taxonomy) %>% 
+  filter(present) %>% 
+  mutate(present = ifelse(present == FALSE, NA, present)) %>%  
+  group_by(m_id, Phylum_n, n, Name, Category_1, Category_2) %>% 
+  summarise(count_presence = sum(present, na.rm = TRUE)) %>%  
+  mutate(prec_mags = count_presence / n) %>% 
+  mutate(prec_mags = ifelse(prec_mags == 0, NA, prec_mags))
+
+traits_plot <- traits %>% 
+  filter(!(Category_1 %in% c('Low temperature stress', 'Transcription regulation'))) %>% 
+  ggplot() +
+  geom_tile(aes(x = Phylum_n,
+                y = Name,
+                fill = prec_mags),
+            color = 'white') +
+  facet_grid2(Category_1 ~ .,
+              scales = 'free',
+              space = 'free',
+              strip = strip_nested(size = 'variable'),
+              switch = 'y',
+              labeller = label_wrap_gen(width=15)) +
+  scale_fill_distiller(palette = 'Oranges', direction = 1, na.value = 'white',
+                       labels = scales::percent) +
+  labs(fill = 'Percentage\nof MAGs\nin each phyla') +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        strip.text.y.left = element_text(angle = 0, size = 6),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title = element_blank(),
+        strip.placement = 'outer',
+        legend.title = element_text(size = 7),
+        legend.text = element_text(size = 6),
+        axis.text = element_text(size = 4.5),
+        legend.position = 'bottom',
+        strip.background = element_blank(),
+        legend.key.height = unit(.3, 'lines'),
+        legend.key.width = unit(1, 'lines'),
+        panel.spacing.y = unit(.2, 'lines')) 
+
+traits_plot
+```
+
+
+# Saving figure
+
+```{r}
+layout <- '
+AC
+BC
+'
+
+fig4_1 <- tree_annotated +
+  plot_annotation(tag_levels = 'A')
+
+fig4_1
+
+ggsave('output_figures/incomplete_Figure3_1.svg', fig4_1, dpi = 300, height = 185, width = 90, units = 'mm')
+
+des <- "
+A#
+BC
+DD
+"
+
+fig4_2 <- rate_den + gc_rate + gc_den + free(traits_plot) +
+  plot_layout(design = des, heights = c(.2, 1, 10), widths = c(4, .5)) +
+  plot_annotation(tag_levels = list(c('B', '', '', 'C')))
+
+fig4_2
+
+ggsave('output_figures/incomplete_Figure3_2.svg', fig4_2, dpi = 300, height = 185, width = 90, units = 'mm')
+```

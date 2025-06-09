@@ -26,17 +26,18 @@ metadata <- load_metadata()
 
 singlem_rplP <- load_singlem_data(which = 'counts',
                                   prev_min_counts = 0,
-                                  prev_min_samples = 0,
+                                  prev_min_samples = 2,
                                   normalize_sum = FALSE)
 
 set.seed(123)
 singlem_rarefied <- rrarefy(singlem_rplP, 800) %>% 
   as.data.frame()
 
-singlem_filt <- singlem_rarefied[, colSums(singlem_rarefied > 0) >= 4]
 
 singlem_taxonomy <- load_singlem_taxonomy() %>% 
-  mutate(Phylum_lump = fct_lump_n(Phylum, 8, w = coverage))
+  mutate(Phylum_lump = fct_lump_n(Phylum, 8, w = coverage),
+         Class = ifelse(is.na(Class), glue::glue('Unassigned class of {Phylum}'), Class),
+         Class_lump = fct_lump_n(Class, 12, w = coverage))
 ```
 
 ## Organic matter data
@@ -58,6 +59,11 @@ phyl_color <- set_names(
   nm = levels(singlem_taxonomy$Phylum_lump)
 )
 
+class_color <- set_names(
+  c(ggpubr::get_palette('Paired', 12), 'gray60'),
+  nm = levels(singlem_taxonomy$Class_lump)
+)
+
 month_color <- load_colors('month')
 stage_color <- load_colors('stage')
 ```
@@ -70,24 +76,24 @@ stage_color <- load_colors('stage')
 singlem_ra <- singlem_taxonomy %>% 
   group_by(sample) %>% 
   mutate(r_abundance = coverage / sum (coverage)) %>% 
-  group_by(sample, Phylum_lump) %>% 
+  group_by(sample, Class_lump) %>% 
   summarise(r_abundance = sum(r_abundance)) %>% 
   inner_join(metadata, by = c('sample' = 'asv_sample'))
 
 singlem_tax_plot <- singlem_ra %>%  
-  group_by(Phylum_lump, month) %>%
+  group_by(Class_lump, month) %>%
   summarise(r_abundance = mean(r_abundance)) %>%
   ggplot() +
   geom_col(aes(x =month,
                y = r_abundance,
-               fill = Phylum_lump),
+               fill = Class_lump),
            color = 'black',
            linewidth = .2) +
-  scale_fill_manual(values = phyl_color) +
+  scale_fill_manual(values = class_color) +
   scale_y_continuous(labels = scales::percent) +
   labs(title = 'Taxonomy profile - SingleM',
        y = 'Relative Abundance',
-       fill = 'Phylum') +
+       fill = 'Class') +
   guides(fill = guide_legend(nrow = 5)) +
   custom_theme +
   theme(axis.title.x = element_blank(),
@@ -153,17 +159,27 @@ fticr_elcomp_pos_plot
 ## SingleM
 
 ```{r}
-singlem_bray <- vegdist(singlem_rplP, method = 'bray')
+metadata_singlem <- metadata %>% 
+  filter(asv_sample %in% rownames(singlem_rplP))
+
+singlem_bray <- vegdist(singlem_rarefied[metadata_singlem$asv_sample,], method = 'bray')
+
+# group_factor <- metadata_singlem %>% 
+#   pull(month)
+# 
+# bd <- betadisper(singlem_bray, group_factor)
+# 
+# anova(bd)
+# permutest(bd)
 
 singlem_permanova <- adonis2(singlem_bray ~ month,
-                             data = metadata %>% 
-                               filter(asv_sample %in% rownames(singlem_rplP)))
+                             data = metadata_singlem)
 singlem_permanova
 
 singlem_phylo <- phyloseq(sample_data(metadata %>% 
                                         filter(asv_sample %in% rownames(singlem_rplP)) %>% 
                                         column_to_rownames(var = 'asv_sample')),
-                          otu_table(singlem_rplP, taxa_are_rows = FALSE))
+                          otu_table(singlem_rarefied, taxa_are_rows = FALSE))
 
 singlem_ord <- ordinate(singlem_phylo, method = "MDS", distance = "bray")
 
@@ -173,17 +189,17 @@ singlem_pcoa_plot <- plot_ordination(singlem_phylo, singlem_ord, justDF = TRUE) 
   geom_point(aes(fill = month),
              size = 2,
              shape = 21) +
-  ggforce::geom_mark_ellipse(aes(color = stage),
-                             show.legend = FALSE) +
+  # ggforce::geom_mark_ellipse(aes(color = month),
+  #                            show.legend = FALSE) +
   annotate('label',label = str_c('PERMANOVA\nMonth p-value = ', singlem_permanova$`Pr(>F)`[1],
                                  '\nMonth R2 = ', round(singlem_permanova$R2[1], 2)),
-           x = 0.1,
+           x = 0.2,
            y = 0.15,
            size = 1.5,
            hjust = 0,
            vjust = 0) +
   scale_fill_manual(values = month_color) +
-  scale_color_manual(values = stage_color) +
+  # scale_color_manual(values = stage_color) +
   scale_x_continuous(limits = c(-0.4, 0.6)) +
   labs(title = 'PCoA Ordination - SingleM',
        x = paste0('Axis.1 [', round(singlem_ord$values$Relative_eig[1] * 100, 1), '%]'),
@@ -195,19 +211,30 @@ singlem_pcoa_plot <- plot_ordination(singlem_phylo, singlem_ord, justDF = TRUE) 
 singlem_pcoa_plot
 ```
 
+
 ## FTICR data
 
 ```{r}
-fticr_bray <- decostand(fticr_pos, method = 'total') %>% 
-  vegdist(, method = 'bray')
+metadata_fticr <- metadata %>% 
+  filter(asv_sample %in% rownames(fticr_pos))
 
-fticr_permanova <- adonis2(fticr_bray ~ month,
-                           data = metadata %>% 
-                             filter(asv_sample %in% rownames(fticr_pos)))
+fticr_jaccard <- decostand(fticr_pos[metadata_fticr$asv_sample,], method = 'pa') %>% 
+  vegdist(, method = 'jaccard')
+
+fticr_permanova <- adonis2(fticr_jaccard ~ month,
+                           data = metadata_fticr)
 fticr_permanova
 
-nmds_fticr <- metaMDS(fticr_bray,
-                      distance = 'bray',
+# group_factor <- metadata_fticr %>% 
+#   pull(month)
+# 
+# bd <- betadisper(fticr_bray, group_factor)
+# 
+# anova(bd)
+# permutest(bd)
+
+nmds_fticr <- metaMDS(fticr_jaccard,
+                      distance = 'jaccard',
                       k = 2,
                       try = 500, 
                       maxit = 999,
@@ -215,7 +242,7 @@ nmds_fticr <- metaMDS(fticr_bray,
 
 nmds_scores_fticr <- as.data.frame(vegan::scores(nmds_fticr)) %>% 
   rownames_to_column(var = 'asv_sample') %>% 
-  inner_join(metadata, by = 'asv_sample')
+  inner_join(metadata_fticr, by = 'asv_sample')
 
 nmds_plot_fticr <- nmds_scores_fticr %>% 
   ggplot(aes(x = NMDS1,
@@ -223,15 +250,17 @@ nmds_plot_fticr <- nmds_scores_fticr %>%
   geom_point(aes(fill = month),
              shape = 21,
              size = 2) +
-  ggforce::geom_mark_ellipse(aes(color = stage),
-                             show.legend = FALSE) +
+  # stat_density_2d(aes(color = stage), 
+  #                 linewidth = 1, contour = TRUE, alpha = 0.5) +
+  # ggforce::geom_mark_ellipse(aes(color = stage),
+  #                            show.legend = FALSE) +
   scale_fill_manual(values = month_color) +
-  scale_color_manual(values = stage_color) +
+  # scale_color_manual(values = stage_color) +
   annotate('label',label = str_c('PERMANOVA\nMonth p-value = ', fticr_permanova$`Pr(>F)`[1],
                                  '\nMonth R2 = ', round(fticr_permanova$R2[1], 2),
                                  '\nNMDS stress = ', round(nmds_fticr$stress, 2)),
-           x = 0.23,
-           y = 0.15,
+           x = 0.25,
+           y = -0.4,
            size = 1.5,
            hjust = 0,
            vjust = 0) +
@@ -260,7 +289,7 @@ for_legend2 <- metadata %>%
         legend.key.spacing.y = unit(.01, 'lines'),
         legend.key.spacing.x = unit(.01, 'lines'),
         legend.key.size = unit(.5, 'lines'),
-        legend.title.position = 'top')
+        legend.title.position = 'left')
 
 leg_ord <- get_legend(for_legend2)
 ```
@@ -268,7 +297,6 @@ leg_ord <- get_legend(for_legend2)
 # Alpha diversity
 
 ```{r}
-
 fticr_alpha <- phyloseq::otu_table(round(fticr_pos), taxa_are_rows = FALSE) %>% 
   phyloseq::estimate_richness(.) %>% 
   select(Observed, Chao1, ACE) %>% 
@@ -314,6 +342,22 @@ singlem_alpha_summ <- reduce(singlem_alpha, rbind) %>%
 
 
 ```{r}
+
+stages <- tribble(
+  ~Stage, ~start, ~end,
+  'Pre monsoon', -Inf, 1.5,
+  'During monsoon', 1.5, 5.5,
+  'Post monsoon', 5.5, 6.5,
+  'Pre monsoon', 6.5, Inf
+) %>% 
+  mutate(Stage = factor(Stage, levels = c('Pre monsoon',
+                                          'During monsoon',
+                                          'Post monsoon')))
+
+stages_ready <- rbind(stages, stages, stages, stages) %>% 
+  mutate(dataset = rep(c('SingleM', 'FTICR'), each = 8),
+         idx = rep(c(rep('Observed richness', 4), rep('Chao1 index', 4)), 2))
+
 new_alpha_plot <- rbind(singlem_alpha_summ, fticr_alpha) %>% 
   inner_join(metadata, by = c('sample' = 'asv_sample')) %>% 
   mutate(idx = factor(idx, levels = c('Observed', 'Shannon', 'Chao1', 'ACE')),
@@ -322,10 +366,21 @@ new_alpha_plot <- rbind(singlem_alpha_summ, fticr_alpha) %>%
   filter(dataset %in% c('SingleM', 'FTICR'),
          idx != 'ACE') %>% 
   ggplot() +
+  geom_rect(data = stages,
+            aes(xmin = start,
+                xmax = end,
+                ymin = -Inf,
+                ymax = Inf,
+                fill = Stage),
+            alpha = 0.3) +
+  scale_fill_manual(values = stage_color) +
+  ggnewscale::new_scale_fill() +
   geom_boxplot(aes(x = month,
                    y = value,
                    fill = dataset),
-               linewidth = 0.2) +
+               linewidth = 0.2,
+               outlier.size = 0.5,
+               show.legend = FALSE) +
   facet_grid2(rows = vars(idx),
               cols = vars(dataset),
               scales = 'free',
@@ -334,9 +389,15 @@ new_alpha_plot <- rbind(singlem_alpha_summ, fticr_alpha) %>%
   scale_fill_brewer(palette = 'Dark2') +
   custom_theme +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        axis.title = element_blank(), legend.position = 'none',
+        axis.title = element_blank(), 
+        legend.position = 'bottom',
         strip.background = element_blank(),
-        strip.placement = 'outer')
+        strip.placement = 'outer',
+        legend.title.position = 'top',
+        legend.key.spacing.y = unit(.01, 'lines'),
+        legend.key.spacing.x = unit(.01, 'lines'),
+        legend.key.size = unit(.5, 'lines'),
+        legend.box.spacing = unit(0, 'lines'))
 
 new_alpha_plot
 ```
@@ -371,11 +432,11 @@ set.seed(123)
 mash_dist <- as.dist(mash_df[metadata_reads$sample, metadata_reads$sample])
 
 nmds_reads <- metaMDS(mash_dist,
-                distance = 'bray',
-                k = 2,
-                try = 500, 
-                maxit = 999,
-                wascores = TRUE)
+                      distance = 'bray',
+                      k = 2,
+                      try = 500, 
+                      maxit = 999,
+                      wascores = TRUE)
 
 ```
 
@@ -391,13 +452,13 @@ nmds_plot_mash <- nmds_scores %>%
   geom_point(aes(x = NMDS1,
                  y = NMDS2,
                  fill = Location),
-             size = 1.2,
+             size = 1.7,
              shape = 21,
              alpha = 0.6) +
-  ggforce::geom_mark_ellipse(aes(x = NMDS1,
-                                 y = NMDS2,
-                                 group = dataset),
-                             linewidth = .2) +
+  # ggforce::geom_mark_ellipse(aes(x = NMDS1,
+  #                                y = NMDS2,
+  #                                group = dataset),
+  #                            linewidth = .2) +
   scale_fill_manual(values = ggpubr::get_palette('Dark2', 8)) +
   guides(fill = guide_legend(ncol = 2)) +
   #labs(title = 'MASH distances between different datasets') +
@@ -418,16 +479,18 @@ nmds_plot_mash
 layout <- "
 ABG
 DEC
-FFF
+FFC
 "
 
-fig2 <- singlem_tax_plot + fticr_elcomp_pos_plot + new_alpha_plot +
+fig2 <- singlem_tax_plot + fticr_elcomp_pos_plot + free(new_alpha_plot) +
   singlem_pcoa_plot + nmds_plot_fticr + leg_ord + nmds_plot_mash +
   plot_layout(design = layout, 
-              heights = c(1.5, 1, .1),
+              heights = c(1.5, 1, .07),
               widths = c(1, 1 , 1)) + 
   plot_annotation(tag_levels = list(c('A', 'B', 'F', 'D', 'E', '', 'C'))) &
-  theme(text = element_text(size = 7))
+  theme(text = element_text(size = 7),
+        # plot.title = element_blank(),
+        plot.margin = unit(c(0.2, 0.2, 0.2, 0.2), 'lines'))
 
 fig2
 
