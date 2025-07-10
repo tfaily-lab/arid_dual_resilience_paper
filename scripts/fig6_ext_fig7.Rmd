@@ -654,7 +654,7 @@ all_netindex_final <- all_netindex %>%
 write_csv(all_netindex_final, 'output_tables/Supplementary_table_4.csv')
 ```
 
-# Supplementary Figure 8
+# Supplementary Figure 7
 
 ```{r}
 module_belong <- single_net_df %>% 
