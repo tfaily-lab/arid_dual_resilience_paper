@@ -16,6 +16,8 @@ updated_figures/
 updated_tables/
 output_tables/Supplementary*
 output_figures_old/*
+output_tables_old/
+final_output_tables/
 docs/
 *.png
 

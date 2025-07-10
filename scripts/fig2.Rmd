@@ -25,8 +25,8 @@ source('scripts/custom_functions.R')
 metadata <- load_metadata()
 
 singlem_rplP <- load_singlem_data(which = 'counts',
-                                  prev_min_counts = 0,
-                                  prev_min_samples = 2,
+                                  prev_min_counts = 1,
+                                  prev_min_samples = 3,
                                   normalize_sum = FALSE)
 
 set.seed(123)
@@ -189,7 +189,7 @@ singlem_pcoa_plot <- plot_ordination(singlem_phylo, singlem_ord, justDF = TRUE) 
   geom_point(aes(fill = month),
              size = 2,
              shape = 21) +
-  # ggforce::geom_mark_ellipse(aes(color = month),
+  # ggforce::geom_mark_ellipse(aes(color = stage),
   #                            show.legend = FALSE) +
   annotate('label',label = str_c('PERMANOVA\nMonth p-value = ', singlem_permanova$`Pr(>F)`[1],
                                  '\nMonth R2 = ', round(singlem_permanova$R2[1], 2)),
@@ -495,6 +495,9 @@ fig2 <- singlem_tax_plot + fticr_elcomp_pos_plot + free(new_alpha_plot) +
 fig2
 
 ggsave('output_figures/Figure_2.svg', fig2, dpi = 300,
+       width = 180, height = 150, units = 'mm')
+
+ggsave('output_figures/Figure_2.png', fig2, dpi = 300,
        width = 180, height = 150, units = 'mm')
 ```
 

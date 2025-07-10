@@ -33,7 +33,7 @@ asv_taxonomy <- load_asv_taxonomy() %>%
 
 singlem_rplP <- load_singlem_data(which = 'counts',
                                   prev_min_counts = 1,
-                                  prev_min_samples = 2,
+                                  prev_min_samples = 3,
                                   normalize_sum = FALSE)
 
 set.seed(123)
